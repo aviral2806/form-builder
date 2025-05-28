@@ -91,6 +91,8 @@ export default function FieldEditorModal({
 
   if (!editedField) return null;
 
+  const nonPlaceholderTypes = ["checkbox", "radio", "dropdown", "date"];
+
   const renderFieldEditor = () => {
     const commonProps = {
       field: editedField,
@@ -114,7 +116,7 @@ export default function FieldEditorModal({
         return <CheckboxFieldEditor {...commonProps} />;
       case "radio":
         return <RadioFieldEditor {...commonProps} />;
-      case "dropdown":
+      case "dropdown": // Ensure this case is present
         return <DropdownFieldEditor {...commonProps} />;
       default:
         return <div>No editor available for this field type</div>;
@@ -148,15 +150,19 @@ export default function FieldEditorModal({
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Placeholder</label>
-          <input
-            type="text"
-            value={editedField.placeholder || ""}
-            onChange={(e) => updateField({ placeholder: e.target.value })}
-            className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
-          />
-        </div>
+        {!nonPlaceholderTypes.find((type) => type === editedField.type) && (
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Placeholder
+            </label>
+            <input
+              type="text"
+              value={editedField.placeholder || ""}
+              onChange={(e) => updateField({ placeholder: e.target.value })}
+              className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+            />
+          </div>
+        )}
 
         <div className="flex items-center space-x-3">
           <Checkbox

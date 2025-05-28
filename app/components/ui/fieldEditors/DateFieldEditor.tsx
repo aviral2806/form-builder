@@ -1,5 +1,6 @@
 import { Field, FieldOption } from "~/stores/formBuilder";
-import { Checkbox } from "antd";
+import { DatePicker, Select } from "antd";
+import dayjs from "dayjs";
 
 interface DateFieldEditorProps {
   field: Field;
@@ -12,54 +13,86 @@ export default function DateFieldEditor({
   updateOption,
   getOptionValue,
 }: DateFieldEditorProps) {
+  const minDate = getOptionValue("minDate", "");
+  const maxDate = getOptionValue("maxDate", "");
+  const defaultValue = getOptionValue("defaultValue", "none");
+
+  const handleMinDateChange = (date: dayjs.Dayjs | null) => {
+    const newMinDate = date ? date.format("YYYY-MM-DD") : "";
+    updateOption("minDate", newMinDate);
+  };
+
+  const handleMaxDateChange = (date: dayjs.Dayjs | null) => {
+    const newMaxDate = date ? date.format("YYYY-MM-DD") : "";
+    updateOption("maxDate", newMaxDate);
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="font-medium text-gray-900 dark:text-gray-100">
         Date Field Options
       </h3>
 
+      {/* Min Date */}
       <div>
         <label className="block text-sm font-medium mb-1">Min Date</label>
-        <input
-          type="date"
-          value={getOptionValue("minDate", "")}
-          onChange={(e) => updateOption("minDate", e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+        <DatePicker
+          value={minDate ? dayjs(minDate) : null}
+          onChange={handleMinDateChange}
+          className="w-full"
+          disabledDate={(current) =>
+            maxDate && current && current.isAfter(dayjs(maxDate))
+          }
         />
       </div>
 
+      {/* Max Date */}
       <div>
         <label className="block text-sm font-medium mb-1">Max Date</label>
-        <input
-          type="date"
-          value={getOptionValue("maxDate", "")}
-          onChange={(e) => updateOption("maxDate", e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+        <DatePicker
+          value={maxDate ? dayjs(maxDate) : null}
+          onChange={handleMaxDateChange}
+          className="w-full"
+          disabledDate={(current) =>
+            minDate && current && current.isBefore(dayjs(minDate))
+          }
         />
       </div>
 
+      {/* Default Value */}
       <div>
         <label className="block text-sm font-medium mb-1">Default Value</label>
-        <select
-          value={getOptionValue("defaultValue", "none")}
-          onChange={(e) => updateOption("defaultValue", e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+        <Select
+          value={defaultValue}
+          onChange={(value) => updateOption("defaultValue", value)}
+          className="w-full"
         >
-          <option value="none">No default</option>
-          <option value="today">Today</option>
-          <option value="custom">Custom date</option>
-        </select>
-      </div>
-
-      <div className="flex items-center">
-        <Checkbox
-          checked={getOptionValue("disableWeekends", false)}
-          onChange={(e) =>
-            updateOption("disableWeekends", e.target.checked, "boolean")
-          }
-        >
-          Disable weekends
-        </Checkbox>
+          <Select.Option value="none">No default</Select.Option>
+          <Select.Option value="today">Today</Select.Option>
+          <Select.Option value="custom">Custom date</Select.Option>
+        </Select>
+        {defaultValue === "custom" && (
+          <div className="mt-2">
+            <DatePicker
+              value={
+                getOptionValue("customDefaultDate", "")
+                  ? dayjs(getOptionValue("customDefaultDate", ""))
+                  : null
+              }
+              onChange={(date) =>
+                updateOption(
+                  "customDefaultDate",
+                  date ? date.format("YYYY-MM-DD") : ""
+                )
+              }
+              className="w-full"
+              disabledDate={(current) =>
+                (minDate && current && current.isBefore(dayjs(minDate))) ||
+                (maxDate && current && current.isAfter(dayjs(maxDate)))
+              }
+            />
+          </div>
+        )}
       </div>
     </div>
   );

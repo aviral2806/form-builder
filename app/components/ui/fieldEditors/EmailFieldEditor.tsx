@@ -20,26 +20,13 @@ export default function EmailFieldEditor({
 
       <div>
         <label className="block text-sm font-medium mb-1">
-          Custom Validation Message
-        </label>
-        <input
-          type="text"
-          value={getOptionValue("validationMessage", "")}
-          onChange={(e) => updateOption("validationMessage", e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
-          placeholder="Please enter a valid email address"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">
           Allowed Domains
         </label>
         <input
           type="text"
           value={getOptionValue("allowedDomains", "")}
           onChange={(e) => updateOption("allowedDomains", e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 border-gray-300 dark:border-gray-600"
           placeholder="e.g., company.com, example.org (comma separated)"
         />
         <p className="text-xs text-gray-500 mt-1">

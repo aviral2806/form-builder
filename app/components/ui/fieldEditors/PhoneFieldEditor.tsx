@@ -13,12 +13,13 @@ export default function PhoneFieldEditor({
   getOptionValue,
 }: PhoneFieldEditorProps) {
   const countryCodes = [
-    { code: "+1", country: "US/Canada" },
-    { code: "+44", country: "UK" },
-    { code: "+91", country: "India" },
-    { code: "+49", country: "Germany" },
-    { code: "+33", country: "France" },
-    // Add more as needed
+    { code: "+1", country: "US/Canada", digits: 10 },
+    { code: "+44", country: "UK", digits: 10 },
+    { code: "+91", country: "India", digits: 10 },
+    { code: "+49", country: "Germany", digits: 11 },
+    { code: "+33", country: "France", digits: 10 },
+    { code: "+61", country: "Australia", digits: 9 },
+    { code: "+81", country: "Japan", digits: 10 },
   ];
 
   return (
@@ -46,29 +47,28 @@ export default function PhoneFieldEditor({
           <select
             value={getOptionValue("defaultCountryCode", "+1")}
             onChange={(e) => updateOption("defaultCountryCode", e.target.value)}
-            className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+            className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 border-gray-300 dark:border-gray-600"
           >
-            {countryCodes.map(({ code, country }) => (
+            {countryCodes.map(({ code, country, digits }) => (
               <option key={code} value={code}>
-                {code} ({country})
+                {code} ({country}) - {digits} digits
               </option>
             ))}
           </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Phone format will be determined by the selected country code
+          </p>
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Format</label>
-        <select
-          value={getOptionValue("format", "international")}
-          onChange={(e) => updateOption("format", e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
-        >
-          <option value="international">International (+1 234 567 8900)</option>
-          <option value="national">(234) 567-8900</option>
-          <option value="raw">Raw (2345678900)</option>
-        </select>
-      </div>
+      {!getOptionValue("showCountryCode", true) && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3">
+          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            Without country code, phone numbers will be validated as 10-digit
+            numbers only.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

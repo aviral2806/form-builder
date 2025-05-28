@@ -13,11 +13,13 @@ export default function FormCanvas() {
   const handleEditField = (fieldId: string) => {
     // Find the field across all sections
     let foundField: Field | null = null;
-
+    console.log("Searching for field with ID:", fieldId); // Debug log
     sections.forEach((section) => {
       const field = section.fields.find((f) => f.id === fieldId);
       if (field) foundField = field;
     });
+
+    console.log("Found field:", foundField); // Debug log
 
     if (foundField) {
       setEditingField(foundField);

@@ -1,5 +1,6 @@
 import { Field, FieldOption } from "~/stores/formBuilder";
-import { Checkbox } from "antd";
+import { Checkbox, Tooltip } from "antd";
+import { HelpCircle } from "lucide-react";
 
 interface TextFieldEditorProps {
   field: Field;
@@ -26,7 +27,7 @@ export default function TextFieldEditor({
           onChange={(e) =>
             updateOption("minLength", parseInt(e.target.value) || 0, "number")
           }
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 border-gray-300 dark:border-gray-600"
           min="0"
         />
       </div>
@@ -39,25 +40,51 @@ export default function TextFieldEditor({
           onChange={(e) =>
             updateOption("maxLength", parseInt(e.target.value) || 0, "number")
           }
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 border-gray-300 dark:border-gray-600"
           min="0"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">
-          Pattern (Regex)
-        </label>
+        <div className="flex items-center space-x-2 mb-1">
+          <label className="block text-sm font-medium">Pattern</label>
+          <Tooltip
+            title={
+              <div className="space-y-2">
+                <div className="font-medium">Pattern Examples:</div>
+                <div>
+                  <strong>%pattern%</strong> - Must contain "pattern"
+                </div>
+                <div>
+                  <strong>pattern%</strong> - Must start with "pattern"
+                </div>
+                <div>
+                  <strong>%pattern</strong> - Must end with "pattern"
+                </div>
+                <div>
+                  <strong>abc123</strong> - Must be exactly "abc123"
+                </div>
+                <div className="mt-2 text-xs opacity-75">
+                  Use % as wildcard for flexible matching
+                </div>
+              </div>
+            }
+            placement="top"
+            overlayStyle={{ maxWidth: "300px" }}
+          >
+            <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+          </Tooltip>
+        </div>
         <input
           type="text"
           value={getOptionValue("pattern", "")}
           onChange={(e) => updateOption("pattern", e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
-          placeholder="e.g., ^[A-Za-z]+$"
+          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 border-gray-300 dark:border-gray-600"
+          placeholder="e.g., %@gmail.com, USER%, %123"
         />
-        <p className="text-xs text-gray-500 mt-1">
-          Regular expression pattern for validation
-        </p>
+        <div className="text-xs text-gray-500 mt-1 space-y-1">
+          <div>Use simple patterns with % as wildcard</div>
+        </div>
       </div>
 
       <div className="flex items-center">

@@ -1,5 +1,5 @@
 import { Field, FieldOption } from "~/stores/formBuilder";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Plus, Minus } from "lucide-react";
 
 interface RadioFieldEditorProps {
@@ -17,13 +17,9 @@ export default function RadioFieldEditor({
     getOptionValue("options", ["Option 1", "Option 2"])
   );
 
-  // Update the options in the field whenever local options change
-  useEffect(() => {
-    updateOption("options", options, "array");
-  }, [options, updateOption]);
-
   const updateOptions = (newOptions: string[]) => {
     setOptions(newOptions);
+    updateOption("options", newOptions, "array");
   };
 
   const addOption = () => {
@@ -98,19 +94,6 @@ export default function RadioFieldEditor({
               {option}
             </option>
           ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">Layout</label>
-        <select
-          value={getOptionValue("layout", "vertical")}
-          onChange={(e) => updateOption("layout", e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
-        >
-          <option value="vertical">Vertical (stacked)</option>
-          <option value="horizontal">Horizontal (inline)</option>
-          <option value="grid">Grid (2 columns)</option>
         </select>
       </div>
     </div>
