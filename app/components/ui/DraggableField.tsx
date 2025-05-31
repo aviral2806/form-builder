@@ -18,9 +18,15 @@ export default function DraggableField({
       data: {
         type,
         label,
-        isPaletteItem: true,
+        isPaletteItem: true, // This should be properly set
       },
     });
+
+  // Debug log to verify data is set
+  console.log(`DraggableField ${type}:`, {
+    fieldId,
+    data: { type, label, isPaletteItem: true },
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),

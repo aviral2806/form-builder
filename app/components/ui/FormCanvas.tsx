@@ -6,8 +6,14 @@ import FieldEditorModal from "./FieldEditorModal";
 import type { Field } from "~/stores/formBuilder";
 
 export default function FormCanvas() {
-  const { formName, setFormName, sections, addSection, updateField } =
-    useFormBuilderStore();
+  const {
+    formName,
+    setFormName,
+    sections,
+    addSection,
+    updateField,
+    deleteField,
+  } = useFormBuilderStore();
   const [editingField, setEditingField] = useState<Field | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -25,6 +31,35 @@ export default function FormCanvas() {
     if (foundField) {
       setEditingField(foundField);
       setIsModalOpen(true);
+    }
+  };
+
+  const handleDeleteField = (fieldId: string) => {
+    // Find the field to get its label for confirmation
+    let foundField: Field | null = null;
+    sections.forEach((section) => {
+      const field = section.fields.find((f) => f.id === fieldId);
+      if (field) foundField = field;
+    });
+
+    if (foundField) {
+      const fieldLabel = foundField.label || "this field";
+      if (
+        window.confirm(
+          `Are you sure you want to delete "${fieldLabel}"? This action cannot be undone.`
+        )
+      ) {
+        console.log("🗑️ User confirmed deletion of field:", fieldId);
+        deleteField(fieldId);
+
+        // If we're deleting the field currently being edited, close the editor
+        if (editingField?.id === fieldId) {
+          setEditingField(null);
+          setIsModalOpen(false);
+        }
+      } else {
+        console.log("❌ User cancelled deletion of field:", fieldId);
+      }
     }
   };
 
@@ -56,6 +91,7 @@ export default function FormCanvas() {
             section={section}
             index={index}
             onEditField={handleEditField}
+            onDeleteField={handleDeleteField}
           />
         ))}
 
