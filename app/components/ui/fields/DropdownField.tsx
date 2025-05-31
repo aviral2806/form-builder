@@ -1,17 +1,25 @@
+import { useState, useEffect } from "react";
 import BaseField from "../BaseField";
+import { Select } from "antd";
 import type { Field } from "~/stores/formBuilder";
 
 interface DropdownFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
+  mode?: "edit" | "preview";
 }
 
 export default function DropdownField({
   field,
   onEdit,
   onDelete,
+  mode = "edit",
 }: DropdownFieldProps) {
+  const [value, setValue] = useState<string | string[] | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [touched, setTouched] = useState(false);
+
   const getOptionValue = (key: string, defaultValue: any = "") => {
     return field.options?.find((opt) => opt.key === key)?.value ?? defaultValue;
   };
@@ -25,45 +33,97 @@ export default function DropdownField({
   const placeholderText = getOptionValue("placeholderText", "Select an option");
   const allowMultiple = getOptionValue("allowMultiple", false);
   const searchable = getOptionValue("searchable", false);
-  const maxSelections = getOptionValue("maxSelections", null);
 
-  return (
-    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+  useEffect(() => {
+    setValue(defaultSelection || (allowMultiple ? [] : null));
+  }, [defaultSelection, allowMultiple]);
+
+  const validateDropdown = (value: string | string[] | null) => {
+    const validationErrors: string[] = [];
+    if (
+      field.required &&
+      (!value || (Array.isArray(value) && value.length === 0))
+    ) {
+      validationErrors.push("This field is required");
+    }
+    return validationErrors;
+  };
+
+  useEffect(() => {
+    if (touched) {
+      setErrors(validateDropdown(value));
+    }
+  }, [value, field.required, touched]);
+
+  const handleChange = (value: string | string[]) => {
+    setValue(value);
+    if (!touched) {
+      setTouched(true);
+    }
+  };
+
+  const getLabelClasses = () => {
+    return "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+  };
+
+  const getContainerClasses = () => {
+    if (mode === "preview") {
+      return "space-y-1";
+    }
+    return "";
+  };
+
+  const fieldContent = (
+    <div className={getContainerClasses()}>
+      <label className={getLabelClasses()}>
         {field.label}
         {field.required && <span className="text-red-500 ml-1">*</span>}
       </label>
 
-      <select
-        className="w-full border rounded px-2 py-1 text-sm bg-gray-50 dark:bg-zinc-800"
-        required={field.required}
-        multiple={allowMultiple}
-        defaultValue={defaultSelection}
-      >
-        {!allowMultiple && (
-          <option value="" disabled>
-            {placeholderText}
-          </option>
-        )}
-        {options.map((option: string, index: number) => (
-          <option key={index} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <Select
+        mode={allowMultiple ? "multiple" : undefined}
+        value={value}
+        onChange={handleChange}
+        placeholder={placeholderText}
+        options={options.map((option: string) => ({
+          value: option,
+          label: option,
+        }))}
+        showSearch={searchable}
+        className={`w-full ${
+          touched && errors.length > 0
+            ? "border-red-500"
+            : touched && errors.length === 0
+            ? "border-green-500"
+            : "border-gray-300"
+        }`}
+      />
 
-      {/* Option info */}
-      <div className="text-xs text-gray-500 mt-1 space-y-1">
-        <div>{options.length} options available</div>
-        {allowMultiple && (
-          <div>
-            Multiple selections allowed
-            {maxSelections && ` (max: ${maxSelections})`}
-          </div>
-        )}
-        {searchable && <div>Searchable dropdown</div>}
-        {defaultSelection && <div>Default: {defaultSelection}</div>}
-      </div>
+      {/* Validation Errors */}
+      {touched && errors.length > 0 && (
+        <div className="text-xs text-red-600 dark:text-red-400 mt-1 space-y-1">
+          {errors.map((error, index) => (
+            <div key={index}>{error}</div>
+          ))}
+        </div>
+      )}
+
+      {/* Success Message */}
+      {touched && errors.length === 0 && value && (
+        <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+          Valid selection
+        </div>
+      )}
+    </div>
+  );
+
+  if (mode === "preview") {
+    return fieldContent;
+  }
+
+  return (
+    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
+      {fieldContent}
     </BaseField>
   );
 }

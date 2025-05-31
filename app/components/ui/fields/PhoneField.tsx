@@ -6,12 +6,14 @@ interface PhoneFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
+  mode?: "edit" | "preview";
 }
 
 export default function PhoneField({
   field,
   onEdit,
   onDelete,
+  mode = "edit",
 }: PhoneFieldProps) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedCountryCode, setSelectedCountryCode] = useState("");
@@ -23,60 +25,41 @@ export default function PhoneField({
   };
 
   const showCountryCode = getOptionValue("showCountryCode", true);
-  const defaultCountryCode = getOptionValue("defaultCountryCode", "+1");
+  const defaultCountry = getOptionValue("defaultCountry", "US");
 
   const countryCodes = [
-    { code: "+1", country: "US/Canada", digits: 10 },
+    { code: "+1", country: "US", digits: 10 },
     { code: "+44", country: "UK", digits: 10 },
-    { code: "+91", country: "India", digits: 10 },
-    { code: "+49", country: "Germany", digits: 11 },
-    { code: "+33", country: "France", digits: 10 },
-    { code: "+61", country: "Australia", digits: 9 },
-    { code: "+81", country: "Japan", digits: 10 },
+    { code: "+91", country: "IN", digits: 10 },
+    { code: "+49", country: "DE", digits: 11 },
+    { code: "+33", country: "FR", digits: 10 },
   ];
 
-  // Initialize selected country code
-  useEffect(() => {
-    if (showCountryCode && !selectedCountryCode) {
-      setSelectedCountryCode(defaultCountryCode);
-    }
-  }, [showCountryCode, defaultCountryCode, selectedCountryCode]);
-
-  // Get current country info
   const getCurrentCountry = () => {
-    if (!showCountryCode) {
-      return { digits: 10, country: "Default" };
+    if (showCountryCode && selectedCountryCode) {
+      return (
+        countryCodes.find((c) => c.code === selectedCountryCode) ||
+        countryCodes[0]
+      );
     }
     return (
-      countryCodes.find((c) => c.code === selectedCountryCode) ||
-      countryCodes[0]
+      countryCodes.find((c) => c.country === defaultCountry) || countryCodes[0]
     );
   };
 
-  // Validation function
-  const validatePhone = (phone: string, countryCode: string) => {
+  const validatePhone = (phone: string) => {
     const validationErrors: string[] = [];
+    const currentCountry = getCurrentCountry();
 
-    // Required validation
     if (field.required && !phone.trim()) {
-      validationErrors.push("Phone number is required");
-      return validationErrors;
+      validationErrors.push("This field is required");
     }
 
-    // Country code validation (if enabled)
-    if (showCountryCode && field.required && !countryCode) {
-      validationErrors.push("Please select a country code");
-    }
-
-    if (phone) {
-      // Only allow digits
+    if (phone && touched) {
       if (!/^\d+$/.test(phone)) {
         validationErrors.push("Phone number must contain only digits");
-        return validationErrors;
       }
 
-      // Length validation based on country
-      const currentCountry = getCurrentCountry();
       if (phone.length !== currentCountry.digits) {
         validationErrors.push(
           `Phone number must be exactly ${currentCountry.digits} digits`
@@ -84,28 +67,20 @@ export default function PhoneField({
       }
     }
 
+    if (showCountryCode && field.required && !selectedCountryCode && touched) {
+      validationErrors.push("Country code is required");
+    }
+
     return validationErrors;
   };
 
-  // Update validation on changes
   useEffect(() => {
-    if (touched) {
-      const validationErrors = validatePhone(phoneNumber, selectedCountryCode);
-      setErrors(validationErrors);
-    }
-  }, [
-    phoneNumber,
-    selectedCountryCode,
-    field.required,
-    showCountryCode,
-    touched,
-  ]);
+    setErrors(validatePhone(phoneNumber));
+  }, [phoneNumber, selectedCountryCode, field.required, touched]);
 
   const handlePhoneChange = (value: string) => {
-    // Only allow digits
-    const numericValue = value.replace(/\D/g, "");
-    setPhoneNumber(numericValue);
-
+    const digitsOnly = value.replace(/\D/g, "");
+    setPhoneNumber(digitsOnly);
     if (!touched) {
       setTouched(true);
     }
@@ -122,7 +97,6 @@ export default function PhoneField({
     setTouched(true);
   };
 
-  // Get input className based on validation state
   const getInputClassName = (hasErrors: boolean) => {
     let baseClass =
       "flex-1 border rounded px-2 py-1 text-sm transition-colors duration-200";
@@ -147,11 +121,22 @@ export default function PhoneField({
     }
   };
 
+  const getLabelClasses = () => {
+    return "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+  };
+
+  const getContainerClasses = () => {
+    if (mode === "preview") {
+      return "space-y-1";
+    }
+    return "";
+  };
+
   const currentCountry = getCurrentCountry();
 
-  return (
-    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+  const fieldContent = (
+    <div className={getContainerClasses()}>
+      <label className={getLabelClasses()}>
         {field.label}
         {field.required && <span className="text-red-500 ml-1">*</span>}
       </label>
@@ -194,13 +179,6 @@ export default function PhoneField({
         </div>
       )}
 
-      {/* Character count */}
-      {phoneNumber && (
-        <div className="text-xs text-gray-500 mt-1 text-right">
-          {phoneNumber.length}/{currentCountry.digits}
-        </div>
-      )}
-
       {/* Validation errors */}
       {touched && errors.length > 0 && (
         <div className="text-xs text-red-600 dark:text-red-400 mt-1 space-y-1">
@@ -214,23 +192,30 @@ export default function PhoneField({
       )}
 
       {/* Success message */}
-      {touched &&
-        errors.length === 0 &&
-        phoneNumber &&
-        (showCountryCode ? selectedCountryCode : true) && (
-          <div className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center space-x-1">
-            <span className="text-green-500">✓</span>
-            <span>Valid phone number</span>
-          </div>
-        )}
+      {touched && errors.length === 0 && phoneNumber && (
+        <div className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center space-x-1">
+          <span className="text-green-500">✓</span>
+          <span>Valid phone number</span>
+        </div>
+      )}
 
-      {/* Validation hints (only show when not touched) */}
+      {/* Validation hints */}
       {!touched && (
         <div className="text-xs text-gray-500 mt-1 space-y-1">
           <div>Enter {currentCountry.digits} digits only</div>
           {showCountryCode && <div>Country code selection required</div>}
         </div>
       )}
+    </div>
+  );
+
+  if (mode === "preview") {
+    return fieldContent;
+  }
+
+  return (
+    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
+      {fieldContent}
     </BaseField>
   );
 }

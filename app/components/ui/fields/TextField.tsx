@@ -6,9 +6,15 @@ interface TextFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
+  mode?: "edit" | "preview";
 }
 
-export default function TextField({ field, onEdit, onDelete }: TextFieldProps) {
+export default function TextField({
+  field,
+  onEdit,
+  onDelete,
+  mode = "edit",
+}: TextFieldProps) {
   const [value, setValue] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [touched, setTouched] = useState(false);
@@ -17,7 +23,6 @@ export default function TextField({ field, onEdit, onDelete }: TextFieldProps) {
     return field.options?.find((opt) => opt.key === key)?.value ?? defaultValue;
   };
 
-  const isMultiline = getOptionValue("multiline", false);
   const minLength = getOptionValue("minLength", 0);
   const maxLength = getOptionValue("maxLength", 0);
   const pattern = getOptionValue("pattern", "");
@@ -152,36 +157,34 @@ export default function TextField({ field, onEdit, onDelete }: TextFieldProps) {
     return "Must match the specified format";
   };
 
-  return (
-    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+  // Get label classes based on mode
+  const getLabelClasses = () => {
+    return "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+  };
+
+  // Get container classes based on mode
+  const getContainerClasses = () => {
+    if (mode === "preview") {
+      return "space-y-1";
+    }
+    return "";
+  };
+
+  const fieldContent = (
+    <div className={getContainerClasses()}>
+      <label className={getLabelClasses()}>
         {field.label}
         {field.required && <span className="text-red-500 ml-1">*</span>}
       </label>
 
-      {isMultiline ? (
-        <textarea
-          value={value}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onBlur={handleBlur}
-          className={getInputClassName()}
-          placeholder={
-            field.placeholder || `Enter ${field.label.toLowerCase()}`
-          }
-          rows={3}
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onBlur={handleBlur}
-          className={getInputClassName()}
-          placeholder={
-            field.placeholder || `Enter ${field.label.toLowerCase()}`
-          }
-        />
-      )}
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => handleInputChange(e.target.value)}
+        onBlur={handleBlur}
+        className={getInputClassName()}
+        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+      />
 
       {/* Character count (if max length is set) */}
       {maxLength > 0 && (
@@ -227,6 +230,18 @@ export default function TextField({ field, onEdit, onDelete }: TextFieldProps) {
           {pattern && <div>{getPatternHint()}</div>}
         </div>
       )}
+    </div>
+  );
+
+  // If in preview mode, return just the field content without BaseField wrapper
+  if (mode === "preview") {
+    return fieldContent;
+  }
+
+  // If in edit mode, wrap with BaseField for edit/delete functionality
+  return (
+    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
+      {fieldContent}
     </BaseField>
   );
 }

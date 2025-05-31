@@ -28,6 +28,7 @@ const createNewField = (type: string, label: string): Field => ({
 
 export interface Section {
   id: string;
+  title: string; // Add title field
   fields: Field[];
 }
 
@@ -40,18 +41,23 @@ interface FormBuilderState {
   addFieldToSection: (sectionId: string, field: Field) => void;
   setEditingField: (field: Field | null) => void;
   updateField: (fieldId: string, updates: Partial<Field>) => void;
+  updateSectionTitle: (sectionId: string, title: string) => void; // Add new function
 }
 
 export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   formName: "Untitled Form",
-  sections: [{ id: nanoid(), fields: [] }],
+  sections: [{ id: nanoid(), title: "Section 1", fields: [] }], // Add default title
   editingField: null,
 
   setFormName: (name) => set({ formName: name }),
 
   addSection: () =>
     set((state) => ({
-      sections: [...state.sections, { id: nanoid(), fields: [] }],
+      sections: [...state.sections, { 
+        id: nanoid(), 
+        title: `Section ${state.sections.length + 1}`, // Auto-generate section name
+        fields: [] 
+      }],
     })),
 
   addFieldToSection: (sectionId, fieldData) => {
@@ -84,5 +90,13 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
           field.id === fieldId ? { ...field, ...updates } : field
         )
       }))
+    })),
+
+  // Add new function to update section title
+  updateSectionTitle: (sectionId, title) =>
+    set((state) => ({
+      sections: state.sections.map(section =>
+        section.id === sectionId ? { ...section, title } : section
+      )
     })),
 }));

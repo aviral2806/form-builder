@@ -6,12 +6,14 @@ interface EmailFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
+  mode?: "edit" | "preview";
 }
 
 export default function EmailField({
   field,
   onEdit,
   onDelete,
+  mode = "edit",
 }: EmailFieldProps) {
   const [value, setValue] = useState("");
   const [confirmValue, setConfirmValue] = useState("");
@@ -24,17 +26,16 @@ export default function EmailField({
     return field.options?.find((opt) => opt.key === key)?.value ?? defaultValue;
   };
 
-  const confirmEmail = getOptionValue("confirmEmail", false);
   const allowedDomains = getOptionValue("allowedDomains", "");
+  const confirmEmail = getOptionValue("confirmEmail", false);
 
-  // Email validation function
+  // Validation function
   const validateEmail = (email: string) => {
     const validationErrors: string[] = [];
 
     // Required validation
     if (field.required && !email.trim()) {
-      validationErrors.push("Email is required");
-      return validationErrors;
+      validationErrors.push("This field is required");
     }
 
     if (email) {
@@ -42,24 +43,14 @@ export default function EmailField({
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         validationErrors.push("Please enter a valid email address");
-        return validationErrors;
       }
 
       // Domain validation
-      if (allowedDomains.trim()) {
-        const domains = allowedDomains
-          .split(",")
-          .map((d) => d.trim().toLowerCase());
-        const emailDomain = email.split("@")[1]?.toLowerCase();
-
+      if (allowedDomains && email) {
+        const domains = allowedDomains.split(",").map((d: string) => d.trim());
+        const emailDomain = email.split("@")[1];
         if (emailDomain && !domains.includes(emailDomain)) {
-          if (domains.length === 1) {
-            validationErrors.push(`Email must be from ${domains[0]} domain`);
-          } else {
-            validationErrors.push(
-              `Email must be from one of these domains: ${domains.join(", ")}`
-            );
-          }
+          validationErrors.push(`Email must be from: ${domains.join(", ")}`);
         }
       }
     }
@@ -67,36 +58,23 @@ export default function EmailField({
     return validationErrors;
   };
 
-  // Confirm email validation
-  const validateConfirmEmail = (confirmEmailValue: string) => {
+  const validateConfirmEmail = (confirmEmail: string) => {
     const validationErrors: string[] = [];
-
-    if (field.required && !confirmEmailValue.trim()) {
-      validationErrors.push("Email confirmation is required");
-      return validationErrors;
-    }
-
-    if (confirmEmailValue && confirmEmailValue !== value) {
+    if (confirmEmail && confirmEmail !== value) {
       validationErrors.push("Emails do not match");
     }
-
     return validationErrors;
   };
 
-  // Update validation on value changes
   useEffect(() => {
-    if (touched) {
-      const validationErrors = validateEmail(value);
-      setErrors(validationErrors);
-    }
-  }, [value, field.required, allowedDomains, touched]);
+    setErrors(validateEmail(value));
+  }, [value, field.required, allowedDomains]);
 
   useEffect(() => {
-    if (confirmTouched && confirmEmail) {
-      const confirmValidationErrors = validateConfirmEmail(confirmValue);
-      setConfirmErrors(confirmValidationErrors);
+    if (confirmEmail) {
+      setConfirmErrors(validateConfirmEmail(confirmValue));
     }
-  }, [confirmValue, value, field.required, confirmEmail, confirmTouched]);
+  }, [confirmValue, value, confirmEmail]);
 
   const handleEmailChange = (newValue: string) => {
     setValue(newValue);
@@ -120,7 +98,6 @@ export default function EmailField({
     setConfirmTouched(true);
   };
 
-  // Get input className based on validation state
   const getInputClassName = (
     hasErrors: boolean,
     isTouched: boolean,
@@ -138,9 +115,20 @@ export default function EmailField({
     }
   };
 
-  return (
-    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+  const getLabelClasses = () => {
+    return "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+  };
+
+  const getContainerClasses = () => {
+    if (mode === "preview") {
+      return "space-y-1";
+    }
+    return "";
+  };
+
+  const fieldContent = (
+    <div className={getContainerClasses()}>
+      <label className={getLabelClasses()}>
         {field.label}
         {field.required && <span className="text-red-500 ml-1">*</span>}
       </label>
@@ -174,10 +162,11 @@ export default function EmailField({
         </div>
       )}
 
+      {/* Confirm Email Field */}
       {confirmEmail && (
         <div className="mt-3">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Confirm {field.label}
+          <label className={getLabelClasses()}>
+            Confirm Email
             {field.required && <span className="text-red-500 ml-1">*</span>}
           </label>
 
@@ -191,7 +180,7 @@ export default function EmailField({
               confirmTouched,
               confirmValue
             )}
-            placeholder={`Confirm ${field.placeholder || "email"}`}
+            placeholder="Confirm your email"
           />
 
           {/* Confirm email validation errors */}
@@ -216,15 +205,25 @@ export default function EmailField({
         </div>
       )}
 
-      {/* Validation hints (only show when not touched or no value) */}
+      {/* Validation hints */}
       {(!touched || !value) && (allowedDomains || confirmEmail) && (
         <div className="text-xs text-gray-500 mt-1 space-y-1">
           {allowedDomains && (
-            <div>Only emails from: {allowedDomains} are allowed</div>
+            <div>Allowed domains: {allowedDomains.replace(/,/g, ", ")}</div>
           )}
           {confirmEmail && <div>Email confirmation required</div>}
         </div>
       )}
+    </div>
+  );
+
+  if (mode === "preview") {
+    return fieldContent;
+  }
+
+  return (
+    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
+      {fieldContent}
     </BaseField>
   );
 }

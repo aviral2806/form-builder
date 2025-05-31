@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { useFormBuilderStore } from "~/stores/formBuilder";
 import DroppableSection from "./DroppableSection";
 import FieldEditorModal from "./FieldEditorModal";
@@ -58,11 +59,13 @@ export default function FormCanvas() {
           />
         ))}
 
+        {/* Updated Add Section Button */}
         <button
           onClick={addSection}
-          className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          className="mt-2 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-dashed border-blue-600 dark:border-blue-400 rounded-full bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
         >
-          ➕ Add Section
+          <Plus className="w-4 h-4" />
+          Add Section
         </button>
       </main>
 

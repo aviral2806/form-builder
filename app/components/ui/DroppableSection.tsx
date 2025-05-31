@@ -1,6 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import RenderField from "./RenderField";
-import { useState } from "react";
+import { useFormBuilderStore } from "~/stores/formBuilder";
 
 interface DroppableSectionProps {
   section: any;
@@ -19,18 +19,20 @@ export default function DroppableSection({
     id: section.id,
   });
 
-  const [sectionName, setSectionName] = useState(
-    section.name || `Section ${index + 1}`
-  );
+  const { updateSectionTitle } = useFormBuilderStore();
+
+  const handleSectionTitleChange = (newTitle: string) => {
+    updateSectionTitle(section.id, newTitle);
+  };
 
   return (
     <div className="p-4 border rounded-lg bg-white dark:bg-zinc-900 shadow">
       <input
         type="text"
         className="text-lg font-bold bg-transparent border-b w-1/3 border-gray-200 dark:border-gray-700 focus:border-gray-400 dark:focus:border-gray-500 outline-none text-gray-900 mb-4 dark:text-gray-100 transition-colors duration-200"
-        value={sectionName}
-        onChange={(e) => setSectionName(e.target.value)}
-        placeholder="Enter form title"
+        value={section.title || `Section ${index + 1}`}
+        onChange={(e) => handleSectionTitleChange(e.target.value)}
+        placeholder="Enter section title"
       />
       <div
         ref={setNodeRef}

@@ -8,9 +8,15 @@ interface DateFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
+  mode?: "edit" | "preview";
 }
 
-export default function DateField({ field, onEdit, onDelete }: DateFieldProps) {
+export default function DateField({
+  field,
+  onEdit,
+  onDelete,
+  mode = "edit",
+}: DateFieldProps) {
   const [value, setValue] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [touched, setTouched] = useState(false);
@@ -21,35 +27,33 @@ export default function DateField({ field, onEdit, onDelete }: DateFieldProps) {
 
   const minDate = getOptionValue("minDate", "");
   const maxDate = getOptionValue("maxDate", "");
-  const defaultValue = getOptionValue("defaultValue", "none");
+  const defaultValue = getOptionValue("defaultValue", "");
   const customDefaultDate = getOptionValue("customDefaultDate", "");
 
-  const getDefaultDate = () => {
-    if (defaultValue === "today") {
-      return dayjs().format("YYYY-MM-DD");
-    } else if (defaultValue === "custom" && customDefaultDate) {
-      return customDefaultDate;
-    }
-    return null;
-  };
-
   useEffect(() => {
-    setValue(getDefaultDate());
+    if (defaultValue === "today") {
+      setValue(dayjs().format("YYYY-MM-DD"));
+    } else if (defaultValue === "custom" && customDefaultDate) {
+      setValue(customDefaultDate);
+    }
   }, [defaultValue, customDefaultDate]);
 
   const validateDate = (date: string | null) => {
     const validationErrors: string[] = [];
 
     if (field.required && !date) {
-      validationErrors.push("Date is required");
+      validationErrors.push("This field is required");
     }
 
     if (date) {
-      if (minDate && dayjs(date).isBefore(dayjs(minDate))) {
-        validationErrors.push(`Date must be on or after ${minDate}`);
+      const selectedDate = dayjs(date);
+
+      if (minDate && selectedDate.isBefore(dayjs(minDate))) {
+        validationErrors.push(`Date must be after ${minDate}`);
       }
-      if (maxDate && dayjs(date).isAfter(dayjs(maxDate))) {
-        validationErrors.push(`Date must be on or before ${maxDate}`);
+
+      if (maxDate && selectedDate.isAfter(dayjs(maxDate))) {
+        validationErrors.push(`Date must be before ${maxDate}`);
       }
     }
 
@@ -60,7 +64,7 @@ export default function DateField({ field, onEdit, onDelete }: DateFieldProps) {
     if (touched) {
       setErrors(validateDate(value));
     }
-  }, [value, minDate, maxDate, field.required, touched]);
+  }, [value, field.required, minDate, maxDate, touched]);
 
   const handleDateChange = (date: dayjs.Dayjs | null) => {
     setValue(date ? date.format("YYYY-MM-DD") : null);
@@ -73,9 +77,20 @@ export default function DateField({ field, onEdit, onDelete }: DateFieldProps) {
     setTouched(true);
   };
 
-  return (
-    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+  const getLabelClasses = () => {
+    return "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+  };
+
+  const getContainerClasses = () => {
+    if (mode === "preview") {
+      return "space-y-1";
+    }
+    return "";
+  };
+
+  const fieldContent = (
+    <div className={getContainerClasses()}>
+      <label className={getLabelClasses()}>
         {field.label}
         {field.required && <span className="text-red-500 ml-1">*</span>}
       </label>
@@ -113,15 +128,27 @@ export default function DateField({ field, onEdit, onDelete }: DateFieldProps) {
         </div>
       )}
 
-      {/* Date constraints info */}
-      <div className="text-xs text-gray-500 mt-1 space-y-1">
-        {minDate && <div>Minimum date: {minDate}</div>}
-        {maxDate && <div>Maximum date: {maxDate}</div>}
-        {defaultValue === "today" && <div>Defaults to today's date</div>}
-        {defaultValue === "custom" && customDefaultDate && (
-          <div>Defaults to: {customDefaultDate}</div>
-        )}
-      </div>
+      {/* Date constraints info (only in edit mode) */}
+      {mode === "edit" && (
+        <div className="text-xs text-gray-500 mt-1 space-y-1">
+          {minDate && <div>Minimum date: {minDate}</div>}
+          {maxDate && <div>Maximum date: {maxDate}</div>}
+          {defaultValue === "today" && <div>Defaults to today's date</div>}
+          {defaultValue === "custom" && customDefaultDate && (
+            <div>Defaults to: {customDefaultDate}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  if (mode === "preview") {
+    return fieldContent;
+  }
+
+  return (
+    <BaseField fieldId={field.id} onEdit={onEdit} onDelete={onDelete}>
+      {fieldContent}
     </BaseField>
   );
 }
