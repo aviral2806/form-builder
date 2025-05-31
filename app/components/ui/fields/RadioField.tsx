@@ -8,6 +8,9 @@ interface RadioFieldProps {
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
   mode?: "edit" | "preview";
+  onValidation?: (isValid: boolean, errors: string[]) => void;
+  onValueChange?: (value: any) => void;
+  initialValue?: string;
 }
 
 export default function RadioField({
@@ -15,8 +18,11 @@ export default function RadioField({
   onEdit,
   onDelete,
   mode = "edit",
+  onValidation,
+  onValueChange,
+  initialValue,
 }: RadioFieldProps) {
-  const [value, setValue] = useState<string>("");
+  const [value, setValue] = useState<string | undefined>(undefined);
   const [errors, setErrors] = useState<string[]>([]);
   const [touched, setTouched] = useState(false);
 
@@ -24,66 +30,58 @@ export default function RadioField({
     return field.options?.find((opt) => opt.key === key)?.value ?? defaultValue;
   };
 
-  const options = getOptionValue("options", ["Option 1", "Option 2"]);
-  const defaultSelection = getOptionValue("defaultSelection", "");
-  const layout = getOptionValue("layout", "vertical");
+  const optionsString = getOptionValue(
+    "options",
+    "Option 1\nOption 2\nOption 3"
+  );
+  const defaultValue = getOptionValue("defaultValue", "");
+  const optionsLayout = getOptionValue("optionsLayout", "vertical");
+
+  const options = optionsString
+    .split("\n")
+    .map((opt: string) => opt.trim())
+    .filter((opt: string) => opt.length > 0);
 
   useEffect(() => {
-    setValue(defaultSelection);
-  }, [defaultSelection]);
+    const initialState =
+      initialValue !== undefined ? initialValue : defaultValue;
+    setValue(initialState || undefined);
+  }, [defaultValue, initialValue]);
 
-  const validateRadio = (value: string) => {
+  const validateRadio = (selectedValue: string | undefined) => {
     const validationErrors: string[] = [];
-    if (field.required && !value) {
-      validationErrors.push("This field is required");
+    if (field.required && !selectedValue) {
+      validationErrors.push("Please select an option");
     }
     return validationErrors;
   };
 
   useEffect(() => {
-    if (touched) {
-      setErrors(validateRadio(value));
+    const validationErrors = validateRadio(value);
+    setErrors(validationErrors);
+
+    // Call validation callback if in preview mode
+    if (mode === "preview" && onValidation) {
+      const isValid = validationErrors.length === 0;
+      onValidation(isValid, validationErrors);
     }
-  }, [value, field.required, touched]);
+  }, [value, field.required, mode, onValidation]);
 
   const handleChange = (e: any) => {
-    setValue(e.target.value);
+    const selectedValue = e.target.value;
+    setValue(selectedValue);
     if (!touched) {
       setTouched(true);
     }
-  };
 
-  const getRadioOptions = () => {
-    return options.map((option: string) => ({
-      label: option,
-      value: option,
-    }));
-  };
-
-  const getDirection = () => {
-    switch (layout) {
-      case "horizontal":
-        return "horizontal";
-      case "grid":
-        return "horizontal"; // Ant Design doesn't have grid, use horizontal
-      default:
-        return "vertical";
+    // Call value change callback if in preview mode
+    if (mode === "preview" && onValueChange) {
+      onValueChange(selectedValue);
     }
-  };
-
-  const getStyle = () => {
-    if (layout === "grid") {
-      return {
-        display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
-        gap: "8px",
-      };
-    }
-    return {};
   };
 
   const getLabelClasses = () => {
-    return "text-sm font-medium text-gray-700 dark:text-gray-300";
+    return "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
   };
 
   const getContainerClasses = () => {
@@ -95,21 +93,36 @@ export default function RadioField({
 
   const fieldContent = (
     <div className={getContainerClasses()}>
-      <div className={getLabelClasses()}>
+      <label className={getLabelClasses()}>
         {field.label}
         {field.required && <span className="text-red-500 ml-1">*</span>}
-      </div>
+      </label>
 
-      <Radio.Group
-        name={`radio-${field.id}`}
-        value={value}
-        onChange={handleChange}
-        options={getRadioOptions()}
-        optionType="default"
-        buttonStyle="outline"
-        style={getStyle()}
-        className={layout === "horizontal" ? "flex flex-wrap gap-4" : ""}
-      />
+      {options.length > 0 ? (
+        <Radio.Group
+          value={value}
+          onChange={handleChange}
+          className={`${
+            optionsLayout === "horizontal"
+              ? "flex flex-wrap gap-4"
+              : "flex flex-col space-y-2"
+          }`}
+        >
+          {options.map((option, index) => (
+            <Radio
+              key={index}
+              value={option}
+              className="text-gray-700 dark:text-gray-300"
+            >
+              {option}
+            </Radio>
+          ))}
+        </Radio.Group>
+      ) : (
+        <p className="text-gray-400 dark:text-gray-500 text-sm italic">
+          No options configured
+        </p>
+      )}
 
       {/* Validation errors */}
       {touched && errors.length > 0 && (
@@ -127,15 +140,7 @@ export default function RadioField({
       {touched && errors.length === 0 && value && (
         <div className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center space-x-1">
           <span className="text-green-500">✓</span>
-          <span>Valid selection</span>
-        </div>
-      )}
-
-      {/* Layout info (only in edit mode) */}
-      {mode === "edit" && (
-        <div className="text-xs text-gray-500 mt-1">
-          Layout: {layout} • {options.length} options
-          {defaultSelection && ` • Default: ${defaultSelection}`}
+          <span>Option selected</span>
         </div>
       )}
     </div>

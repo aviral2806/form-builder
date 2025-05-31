@@ -1,5 +1,5 @@
 import { Field, FieldOption } from "~/stores/formBuilder";
-import { DatePicker, Select } from "antd";
+import { DatePicker, Select, Checkbox } from "antd";
 import dayjs from "dayjs";
 
 interface DateFieldEditorProps {
@@ -16,6 +16,8 @@ export default function DateFieldEditor({
   const minDate = getOptionValue("minDate", "");
   const maxDate = getOptionValue("maxDate", "");
   const defaultValue = getOptionValue("defaultValue", "none");
+  const disablePastDates = getOptionValue("disablePastDates", false);
+  const disableFutureDates = getOptionValue("disableFutureDates", false);
 
   const handleMinDateChange = (date: dayjs.Dayjs | null) => {
     const newMinDate = date ? date.format("YYYY-MM-DD") : "";
@@ -32,6 +34,31 @@ export default function DateFieldEditor({
       <h3 className="font-medium text-gray-900 dark:text-gray-100">
         Date Field Options
       </h3>
+
+      {/* Date Restrictions */}
+      {/* <div className="space-y-3">
+        <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          Date Restrictions
+        </h4>
+
+        <Checkbox
+          checked={disablePastDates}
+          onChange={(e) =>
+            updateOption("disablePastDates", e.target.checked, "boolean")
+          }
+        >
+          Disable past dates
+        </Checkbox>
+
+        <Checkbox
+          checked={disableFutureDates}
+          onChange={(e) =>
+            updateOption("disableFutureDates", e.target.checked, "boolean")
+          }
+        >
+          Disable future dates
+        </Checkbox>
+      </div> */}
 
       {/* Min Date */}
       <div>
@@ -88,7 +115,13 @@ export default function DateFieldEditor({
               className="w-full"
               disabledDate={(current) =>
                 (minDate && current && current.isBefore(dayjs(minDate))) ||
-                (maxDate && current && current.isAfter(dayjs(maxDate)))
+                (maxDate && current && current.isAfter(dayjs(maxDate))) ||
+                (disablePastDates &&
+                  current &&
+                  current.isBefore(dayjs().startOf("day"))) ||
+                (disableFutureDates &&
+                  current &&
+                  current.isAfter(dayjs().startOf("day")))
               }
             />
           </div>

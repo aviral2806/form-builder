@@ -1,5 +1,5 @@
 import { Field, FieldOption } from "~/stores/formBuilder";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Minus } from "lucide-react";
 import { Checkbox, Input } from "antd";
 
@@ -14,13 +14,35 @@ export default function DropdownFieldEditor({
   updateOption,
   getOptionValue,
 }: DropdownFieldEditorProps) {
-  const [options, setOptions] = useState<string[]>(
-    getOptionValue("options", ["Option 1", "Option 2", "Option 3"])
+  // Get options as string and parse to array
+  const optionsString = getOptionValue(
+    "options",
+    "Option 1\nOption 2\nOption 3"
   );
+  const [options, setOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Parse options string into array
+    if (optionsString) {
+      const parsedOptions = optionsString
+        .split("\n")
+        .map((opt: string) => opt.trim())
+        .filter((opt: string) => opt.length > 0);
+      setOptions(
+        parsedOptions.length > 0
+          ? parsedOptions
+          : ["Option 1", "Option 2", "Option 3"]
+      );
+    } else {
+      setOptions(["Option 1", "Option 2", "Option 3"]);
+    }
+  }, [optionsString]);
 
   const updateOptions = (newOptions: string[]) => {
     setOptions(newOptions);
-    updateOption("options", newOptions, "array");
+    // Convert array back to string for storage
+    const optionsString = newOptions.join("\n");
+    updateOption("options", optionsString, "string");
   };
 
   const addOption = () => {
@@ -80,21 +102,13 @@ export default function DropdownFieldEditor({
         </button>
       </div>
 
-      {/* Placeholder Text */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Placeholder Text</label>
-        <Input
-          value={getOptionValue("placeholderText", "Select an option")}
-          onChange={(e) => updateOption("placeholderText", e.target.value)}
-          placeholder="Text shown when no option is selected"
-        />
-      </div>
-
       {/* Allow Multiple Selections */}
       <div className="flex items-center">
         <Checkbox
           checked={getOptionValue("allowMultiple", false)}
-          onChange={(e) => updateOption("allowMultiple", e.target.checked, "boolean")}
+          onChange={(e) =>
+            updateOption("allowMultiple", e.target.checked, "boolean")
+          }
         >
           Allow multiple selections
         </Checkbox>
@@ -104,10 +118,25 @@ export default function DropdownFieldEditor({
       <div className="flex items-center">
         <Checkbox
           checked={getOptionValue("searchable", false)}
-          onChange={(e) => updateOption("searchable", e.target.checked, "boolean")}
+          onChange={(e) =>
+            updateOption("searchable", e.target.checked, "boolean")
+          }
         >
           Make dropdown searchable
         </Checkbox>
+      </div>
+
+      {/* Default Value */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Default Value</label>
+        <Input
+          value={getOptionValue("defaultValue", "")}
+          onChange={(e) => updateOption("defaultValue", e.target.value)}
+          placeholder="Leave empty for no default selection"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          For multiple selection, separate values with commas
+        </p>
       </div>
     </div>
   );

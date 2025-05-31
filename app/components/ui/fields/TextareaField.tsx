@@ -7,6 +7,9 @@ interface TextAreaFieldProps {
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
   mode?: "edit" | "preview";
+  onValidation?: (isValid: boolean, errors: string[]) => void;
+  onValueChange?: (value: any) => void;
+  initialValue?: string;
 }
 
 export default function TextAreaField({
@@ -14,8 +17,11 @@ export default function TextAreaField({
   onEdit,
   onDelete,
   mode = "edit",
+  onValidation,
+  onValueChange,
+  initialValue = "",
 }: TextAreaFieldProps) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue);
   const [errors, setErrors] = useState<string[]>([]);
   const [touched, setTouched] = useState(false);
 
@@ -81,7 +87,7 @@ export default function TextAreaField({
       validationErrors.push("This field is required");
     }
 
-    if (inputValue && touched) {
+    if (inputValue) {
       if (minLength > 0 && inputValue.length < minLength) {
         validationErrors.push(`Must be at least ${minLength} characters`);
       }
@@ -111,12 +117,38 @@ export default function TextAreaField({
   useEffect(() => {
     const validationErrors = validateInput(value);
     setErrors(validationErrors);
-  }, [value, field.required, minLength, maxLength, pattern, touched]);
+
+    // Call validation callback if in preview mode
+    if (mode === "preview" && onValidation) {
+      const isValid = validationErrors.length === 0;
+      onValidation(isValid, validationErrors);
+    }
+  }, [
+    value,
+    field.required,
+    minLength,
+    maxLength,
+    pattern,
+    mode,
+    onValidation,
+  ]);
+
+  // Sync with initial value
+  useEffect(() => {
+    if (initialValue !== undefined) {
+      setValue(initialValue);
+    }
+  }, [initialValue]);
 
   const handleInputChange = (newValue: string) => {
     setValue(newValue);
     if (!touched) {
       setTouched(true);
+    }
+
+    // Call value change callback if in preview mode
+    if (mode === "preview" && onValueChange) {
+      onValueChange(newValue);
     }
   };
 

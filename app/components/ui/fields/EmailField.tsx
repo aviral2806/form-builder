@@ -7,6 +7,9 @@ interface EmailFieldProps {
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
   mode?: "edit" | "preview";
+  onValidation?: (isValid: boolean, errors: string[]) => void;
+  onValueChange?: (value: any) => void;
+  initialValue?: { email: string; confirmEmail: string };
 }
 
 export default function EmailField({
@@ -14,9 +17,14 @@ export default function EmailField({
   onEdit,
   onDelete,
   mode = "edit",
+  onValidation,
+  onValueChange,
+  initialValue,
 }: EmailFieldProps) {
-  const [value, setValue] = useState("");
-  const [confirmValue, setConfirmValue] = useState("");
+  const [value, setValue] = useState(initialValue?.email || "");
+  const [confirmValue, setConfirmValue] = useState(
+    initialValue?.confirmEmail || ""
+  );
   const [errors, setErrors] = useState<string[]>([]);
   const [confirmErrors, setConfirmErrors] = useState<string[]>([]);
   const [touched, setTouched] = useState(false);
@@ -67,19 +75,50 @@ export default function EmailField({
   };
 
   useEffect(() => {
-    setErrors(validateEmail(value));
-  }, [value, field.required, allowedDomains]);
+    const emailErrors = validateEmail(value);
+    const confirmEmailErrors = confirmEmail
+      ? validateConfirmEmail(confirmValue)
+      : [];
 
-  useEffect(() => {
-    if (confirmEmail) {
-      setConfirmErrors(validateConfirmEmail(confirmValue));
+    setErrors(emailErrors);
+    setConfirmErrors(confirmEmailErrors);
+
+    // Call validation callback if in preview mode
+    if (mode === "preview" && onValidation) {
+      const allErrors = [...emailErrors, ...confirmEmailErrors];
+      const isValid = allErrors.length === 0;
+      onValidation(isValid, allErrors);
     }
-  }, [confirmValue, value, confirmEmail]);
+  }, [
+    value,
+    confirmValue,
+    field.required,
+    allowedDomains,
+    confirmEmail,
+    mode,
+    onValidation,
+  ]);
+
+  // Sync with initial value
+  useEffect(() => {
+    if (initialValue) {
+      setValue(initialValue.email || "");
+      setConfirmValue(initialValue.confirmEmail || "");
+    }
+  }, [initialValue]);
 
   const handleEmailChange = (newValue: string) => {
     setValue(newValue);
     if (!touched) {
       setTouched(true);
+    }
+
+    // Call value change callback if in preview mode
+    if (mode === "preview" && onValueChange) {
+      onValueChange({
+        email: newValue,
+        confirmEmail: confirmValue,
+      });
     }
   };
 
@@ -87,6 +126,14 @@ export default function EmailField({
     setConfirmValue(newValue);
     if (!confirmTouched) {
       setConfirmTouched(true);
+    }
+
+    // Call value change callback if in preview mode
+    if (mode === "preview" && onValueChange) {
+      onValueChange({
+        email: value,
+        confirmEmail: newValue,
+      });
     }
   };
 

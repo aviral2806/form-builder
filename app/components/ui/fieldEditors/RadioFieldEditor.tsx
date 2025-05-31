@@ -1,6 +1,9 @@
 import { Field, FieldOption } from "~/stores/formBuilder";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Minus } from "lucide-react";
+import { Select, Input } from "antd";
+
+const { Option } = Select;
 
 interface RadioFieldEditorProps {
   field: Field;
@@ -13,13 +16,35 @@ export default function RadioFieldEditor({
   updateOption,
   getOptionValue,
 }: RadioFieldEditorProps) {
-  const [options, setOptions] = useState<string[]>(
-    getOptionValue("options", ["Option 1", "Option 2"])
+  // Get options as string and parse to array
+  const optionsString = getOptionValue(
+    "options",
+    "Option 1\nOption 2\nOption 3"
   );
+  const [options, setOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Parse options string into array
+    if (optionsString) {
+      const parsedOptions = optionsString
+        .split("\n")
+        .map((opt: string) => opt.trim())
+        .filter((opt: string) => opt.length > 0);
+      setOptions(
+        parsedOptions.length > 0
+          ? parsedOptions
+          : ["Option 1", "Option 2", "Option 3"]
+      );
+    } else {
+      setOptions(["Option 1", "Option 2", "Option 3"]);
+    }
+  }, [optionsString]);
 
   const updateOptions = (newOptions: string[]) => {
     setOptions(newOptions);
-    updateOption("options", newOptions, "array");
+    // Convert array back to string for storage
+    const optionsString = newOptions.join("\n");
+    updateOption("options", optionsString, "string");
   };
 
   const addOption = () => {
@@ -46,16 +71,16 @@ export default function RadioFieldEditor({
         Radio Button Field Options
       </h3>
 
+      {/* Options */}
       <div>
         <label className="block text-sm font-medium mb-2">Options</label>
         <div className="space-y-2">
           {options.map((option, index) => (
             <div key={index} className="flex items-center space-x-2">
-              <input
-                type="text"
+              <Input
                 value={option}
                 onChange={(e) => updateSingleOption(index, e.target.value)}
-                className="flex-1 border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+                className="flex-1"
                 placeholder={`Option ${index + 1}`}
               />
               {options.length > 1 && (
@@ -79,22 +104,37 @@ export default function RadioFieldEditor({
         </button>
       </div>
 
+      {/* Options Layout */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Layout</label>
+        <Select
+          value={getOptionValue("optionsLayout", "vertical")}
+          onChange={(value) => updateOption("optionsLayout", value)}
+          className="w-full"
+        >
+          <Option value="vertical">Vertical</Option>
+          <Option value="horizontal">Horizontal</Option>
+        </Select>
+      </div>
+
+      {/* Default Value */}
       <div>
         <label className="block text-sm font-medium mb-1">
           Default Selection
         </label>
-        <select
-          value={getOptionValue("defaultSelection", "")}
-          onChange={(e) => updateOption("defaultSelection", e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800"
+        <Select
+          value={getOptionValue("defaultValue", "")}
+          onChange={(value) => updateOption("defaultValue", value)}
+          className="w-full"
+          allowClear
+          placeholder="No default selection"
         >
-          <option value="">No default selection</option>
           {options.map((option, index) => (
-            <option key={index} value={option}>
+            <Option key={index} value={option}>
               {option}
-            </option>
+            </Option>
           ))}
-        </select>
+        </Select>
       </div>
     </div>
   );

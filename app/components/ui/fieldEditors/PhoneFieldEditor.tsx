@@ -1,5 +1,30 @@
 import { Field, FieldOption } from "~/stores/formBuilder";
-import { Checkbox } from "antd";
+import { Select, Checkbox } from "antd";
+
+const { Option } = Select;
+
+const countryCodes = [
+  { code: "+1", country: "US", flag: "🇺🇸", name: "United States" },
+  { code: "+1", country: "CA", flag: "🇨🇦", name: "Canada" },
+  { code: "+44", country: "GB", flag: "🇬🇧", name: "United Kingdom" },
+  { code: "+33", country: "FR", flag: "🇫🇷", name: "France" },
+  { code: "+49", country: "DE", flag: "🇩🇪", name: "Germany" },
+  { code: "+39", country: "IT", flag: "🇮🇹", name: "Italy" },
+  { code: "+34", country: "ES", flag: "🇪🇸", name: "Spain" },
+  { code: "+31", country: "NL", flag: "🇳🇱", name: "Netherlands" },
+  { code: "+61", country: "AU", flag: "🇦🇺", name: "Australia" },
+  { code: "+81", country: "JP", flag: "🇯🇵", name: "Japan" },
+  { code: "+82", country: "KR", flag: "🇰🇷", name: "South Korea" },
+  { code: "+86", country: "CN", flag: "🇨🇳", name: "China" },
+  { code: "+91", country: "IN", flag: "🇮🇳", name: "India" },
+  { code: "+55", country: "BR", flag: "🇧🇷", name: "Brazil" },
+  { code: "+52", country: "MX", flag: "🇲🇽", name: "Mexico" },
+  { code: "+7", country: "RU", flag: "🇷🇺", name: "Russia" },
+  { code: "+27", country: "ZA", flag: "🇿🇦", name: "South Africa" },
+  { code: "+20", country: "EG", flag: "🇪🇬", name: "Egypt" },
+  { code: "+971", country: "AE", flag: "🇦🇪", name: "UAE" },
+  { code: "+966", country: "SA", flag: "🇸🇦", name: "Saudi Arabia" },
+];
 
 interface PhoneFieldEditorProps {
   field: Field;
@@ -12,15 +37,8 @@ export default function PhoneFieldEditor({
   updateOption,
   getOptionValue,
 }: PhoneFieldEditorProps) {
-  const countryCodes = [
-    { code: "+1", country: "US/Canada", digits: 10 },
-    { code: "+44", country: "UK", digits: 10 },
-    { code: "+91", country: "India", digits: 10 },
-    { code: "+49", country: "Germany", digits: 11 },
-    { code: "+33", country: "France", digits: 10 },
-    { code: "+61", country: "Australia", digits: 9 },
-    { code: "+81", country: "Japan", digits: 10 },
-  ];
+  const showCountryCode = getOptionValue("showCountryCode", true);
+  const defaultCountryCode = getOptionValue("defaultCountryCode", "+1");
 
   return (
     <div className="space-y-4">
@@ -28,47 +46,78 @@ export default function PhoneFieldEditor({
         Phone Field Options
       </h3>
 
-      <div className="flex items-center">
+      {/* Show Country Code Toggle */}
+      <div className="space-y-2">
         <Checkbox
-          checked={getOptionValue("showCountryCode", true)}
+          checked={showCountryCode}
           onChange={(e) =>
             updateOption("showCountryCode", e.target.checked, "boolean")
           }
         >
-          Show country code selector
+          <span className="text-sm font-medium">
+            Show country code selector
+          </span>
         </Checkbox>
+        <p className="text-xs text-gray-500 ml-6">
+          Allow users to select their country code
+        </p>
       </div>
 
-      {getOptionValue("showCountryCode", true) && (
-        <div>
-          <label className="block text-sm font-medium mb-1">
+      {/* Default Country Code */}
+      {showCountryCode && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">
             Default Country Code
           </label>
-          <select
-            value={getOptionValue("defaultCountryCode", "+1")}
-            onChange={(e) => updateOption("defaultCountryCode", e.target.value)}
-            className="w-full border rounded px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 border-gray-300 dark:border-gray-600"
+          <Select
+            value={defaultCountryCode}
+            onChange={(value) => updateOption("defaultCountryCode", value)}
+            className="w-full"
+            showSearch
+            placeholder="Select default country code"
+            filterOption={(input, option) =>
+              option?.children
+                ?.toString()
+                .toLowerCase()
+                .includes(input.toLowerCase()) ||
+              option?.value?.toString().includes(input)
+            }
           >
-            {countryCodes.map(({ code, country, digits }) => (
-              <option key={code} value={code}>
-                {code} ({country}) - {digits} digits
-              </option>
+            {countryCodes.map((country) => (
+              <Option
+                key={`${country.code}-${country.country}`}
+                value={country.code}
+              >
+                <span className="flex items-center gap-2">
+                  <span>{country.flag}</span>
+                  <span>{country.code}</span>
+                  <span className="text-gray-500">({country.name})</span>
+                </span>
+              </Option>
             ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">
-            Phone format will be determined by the selected country code
-          </p>
+          </Select>
         </div>
       )}
 
-      {!getOptionValue("showCountryCode", true) && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            Without country code, phone numbers will be validated as 10-digit
-            numbers only.
-          </p>
+      {/* Preview */}
+      {/* <div className="border-t pt-3">
+        <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
+          Preview
+        </h4>
+        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+          <div>
+            Country code selector: {showCountryCode ? "Enabled" : "Disabled"}
+          </div>
+          {showCountryCode && <div>Default country: {defaultCountryCode}</div>}
+          <div>Validation: Exactly 10 digits required</div>
+          <div>
+            Input hint:{" "}
+            {showCountryCode
+              ? "Format based on selected country"
+              : "Enter number without country code"}
+          </div>
         </div>
-      )}
+      </div> */}
     </div>
   );
 }

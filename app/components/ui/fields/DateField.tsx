@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import BaseField from "../BaseField";
 import { DatePicker } from "antd";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import type { Field } from "~/stores/formBuilder";
 
 interface DateFieldProps {
@@ -9,6 +9,9 @@ interface DateFieldProps {
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
   mode?: "edit" | "preview";
+  onValidation?: (isValid: boolean, errors: string[]) => void;
+  onValueChange?: (value: any) => void;
+  initialValue?: string;
 }
 
 export default function DateField({
@@ -16,8 +19,11 @@ export default function DateField({
   onEdit,
   onDelete,
   mode = "edit",
+  onValidation,
+  onValueChange,
+  initialValue,
 }: DateFieldProps) {
-  const [value, setValue] = useState<string | null>(null);
+  const [value, setValue] = useState<Dayjs | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [touched, setTouched] = useState(false);
 
@@ -25,35 +31,76 @@ export default function DateField({
     return field.options?.find((opt) => opt.key === key)?.value ?? defaultValue;
   };
 
+  const dateFormat = getOptionValue("dateFormat", "MM/DD/YYYY");
   const minDate = getOptionValue("minDate", "");
   const maxDate = getOptionValue("maxDate", "");
-  const defaultValue = getOptionValue("defaultValue", "");
+  const disablePastDates = getOptionValue("disablePastDates", false);
+  const disableFutureDates = getOptionValue("disableFutureDates", false);
+  const defaultValue = getOptionValue("defaultValue", "none");
   const customDefaultDate = getOptionValue("customDefaultDate", "");
 
   useEffect(() => {
-    if (defaultValue === "today") {
-      setValue(dayjs().format("YYYY-MM-DD"));
-    } else if (defaultValue === "custom" && customDefaultDate) {
-      setValue(customDefaultDate);
-    }
-  }, [defaultValue, customDefaultDate]);
+    let dateToSet: Dayjs | null = null;
 
-  const validateDate = (date: string | null) => {
+    // Priority: initialValue > defaultValue settings
+    if (initialValue) {
+      const parsedDate = dayjs(initialValue);
+      if (parsedDate.isValid()) {
+        dateToSet = parsedDate;
+      }
+    } else {
+      // Handle default value settings
+      if (defaultValue === "today") {
+        dateToSet = dayjs();
+      } else if (defaultValue === "custom" && customDefaultDate) {
+        const parsedCustomDate = dayjs(customDefaultDate);
+        if (parsedCustomDate.isValid()) {
+          dateToSet = parsedCustomDate;
+        }
+      }
+    }
+
+    setValue(dateToSet);
+  }, [initialValue, defaultValue, customDefaultDate]);
+
+  const validateDate = (selectedDate: Dayjs | null) => {
     const validationErrors: string[] = [];
 
-    if (field.required && !date) {
-      validationErrors.push("This field is required");
+    if (field.required && !selectedDate) {
+      validationErrors.push("Date is required");
     }
 
-    if (date) {
-      const selectedDate = dayjs(date);
+    if (selectedDate && selectedDate.isValid()) {
+      const today = dayjs().startOf("day");
 
-      if (minDate && selectedDate.isBefore(dayjs(minDate))) {
-        validationErrors.push(`Date must be after ${minDate}`);
+      // Check past dates restriction
+      if (disablePastDates && selectedDate.isBefore(today)) {
+        validationErrors.push("Past dates are not allowed");
       }
 
-      if (maxDate && selectedDate.isAfter(dayjs(maxDate))) {
-        validationErrors.push(`Date must be before ${maxDate}`);
+      // Check future dates restriction
+      if (disableFutureDates && selectedDate.isAfter(today)) {
+        validationErrors.push("Future dates are not allowed");
+      }
+
+      // Check minimum date
+      if (minDate) {
+        const minDateObj = dayjs(minDate);
+        if (minDateObj.isValid() && selectedDate.isBefore(minDateObj)) {
+          validationErrors.push(
+            `Date must be after ${minDateObj.format(dateFormat)}`
+          );
+        }
+      }
+
+      // Check maximum date
+      if (maxDate) {
+        const maxDateObj = dayjs(maxDate);
+        if (maxDateObj.isValid() && selectedDate.isAfter(maxDateObj)) {
+          validationErrors.push(
+            `Date must be before ${maxDateObj.format(dateFormat)}`
+          );
+        }
       }
     }
 
@@ -61,20 +108,70 @@ export default function DateField({
   };
 
   useEffect(() => {
-    if (touched) {
-      setErrors(validateDate(value));
-    }
-  }, [value, field.required, minDate, maxDate, touched]);
+    const validationErrors = validateDate(value);
+    setErrors(validationErrors);
 
-  const handleDateChange = (date: dayjs.Dayjs | null) => {
-    setValue(date ? date.format("YYYY-MM-DD") : null);
+    // Call validation callback if in preview mode
+    if (mode === "preview" && onValidation) {
+      const isValid = validationErrors.length === 0;
+      onValidation(isValid, validationErrors);
+    }
+  }, [
+    value,
+    field.required,
+    minDate,
+    maxDate,
+    disablePastDates,
+    disableFutureDates,
+    dateFormat,
+    mode,
+    onValidation,
+  ]);
+
+  const handleChange = (date: Dayjs | null) => {
+    setValue(date);
     if (!touched) {
       setTouched(true);
     }
+
+    // Call value change callback if in preview mode
+    if (mode === "preview" && onValueChange) {
+      onValueChange(date ? date.format("YYYY-MM-DD") : null);
+    }
   };
 
-  const handleBlur = () => {
-    setTouched(true);
+  const disabledDate = (current: Dayjs) => {
+    if (!current) return false;
+
+    const today = dayjs().startOf("day");
+
+    // Disable past dates if required
+    if (disablePastDates && current.isBefore(today)) {
+      return true;
+    }
+
+    // Disable future dates if required
+    if (disableFutureDates && current.isAfter(today)) {
+      return true;
+    }
+
+    // Disable dates before minimum date
+    if (minDate) {
+      const minDateObj = dayjs(minDate);
+      if (minDateObj.isValid() && current.isBefore(minDateObj)) {
+        return true;
+      }
+    }
+
+    // Disable dates after maximum date
+    if (maxDate) {
+      const maxDateObj = dayjs(maxDate);
+      if (maxDateObj.isValid() && current.isAfter(maxDateObj)) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   const getLabelClasses = () => {
@@ -88,6 +185,18 @@ export default function DateField({
     return "";
   };
 
+  const getPickerClassName = () => {
+    let baseClass = "w-full";
+
+    if (touched && errors.length > 0) {
+      return `${baseClass} border-red-500`;
+    } else if (touched && errors.length === 0 && value) {
+      return `${baseClass} border-green-500`;
+    }
+
+    return baseClass;
+  };
+
   const fieldContent = (
     <div className={getContainerClasses()}>
       <label className={getLabelClasses()}>
@@ -96,47 +205,53 @@ export default function DateField({
       </label>
 
       <DatePicker
-        value={value ? dayjs(value) : null}
-        onChange={handleDateChange}
-        onBlur={handleBlur}
-        className={`w-full ${
-          touched && errors.length > 0
-            ? "border-red-500"
-            : touched && errors.length === 0
-            ? "border-green-500"
-            : "border-gray-300"
-        }`}
-        disabledDate={(current) =>
-          (minDate && current && current.isBefore(dayjs(minDate))) ||
-          (maxDate && current && current.isAfter(dayjs(maxDate)))
-        }
+        value={value}
+        onChange={handleChange}
+        format={dateFormat}
+        className={getPickerClassName()}
+        placeholder={field.placeholder || `Select date (${dateFormat})`}
+        disabledDate={disabledDate}
+        allowClear
       />
+
+      {/* Date format hint */}
+      <div className="text-xs text-gray-500 mt-1">
+        Format: {dateFormat}
+        {(disablePastDates || disableFutureDates || minDate || maxDate) && (
+          <span className="ml-2">
+            {disablePastDates && "• No past dates"}
+            {disableFutureDates && "• No future dates"}
+            {minDate && ` • After ${dayjs(minDate).format(dateFormat)}`}
+            {maxDate && ` • Before ${dayjs(maxDate).format(dateFormat)}`}
+          </span>
+        )}
+      </div>
+
+      {/* Default value hint */}
+      {!touched && value && (
+        <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+          Default: {value.format(dateFormat)}
+          {defaultValue === "today" && " (Today)"}
+        </div>
+      )}
 
       {/* Validation errors */}
       {touched && errors.length > 0 && (
         <div className="text-xs text-red-600 dark:text-red-400 mt-1 space-y-1">
           {errors.map((error, index) => (
-            <div key={index}>{error}</div>
+            <div key={index} className="flex items-center space-x-1">
+              <span className="text-red-500">•</span>
+              <span>{error}</span>
+            </div>
           ))}
         </div>
       )}
 
       {/* Success message */}
       {touched && errors.length === 0 && value && (
-        <div className="text-xs text-green-600 dark:text-green-400 mt-1">
-          Valid date selected
-        </div>
-      )}
-
-      {/* Date constraints info (only in edit mode) */}
-      {mode === "edit" && (
-        <div className="text-xs text-gray-500 mt-1 space-y-1">
-          {minDate && <div>Minimum date: {minDate}</div>}
-          {maxDate && <div>Maximum date: {maxDate}</div>}
-          {defaultValue === "today" && <div>Defaults to today's date</div>}
-          {defaultValue === "custom" && customDefaultDate && (
-            <div>Defaults to: {customDefaultDate}</div>
-          )}
+        <div className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center space-x-1">
+          <span className="text-green-500">✓</span>
+          <span>Valid date selected</span>
         </div>
       )}
     </div>

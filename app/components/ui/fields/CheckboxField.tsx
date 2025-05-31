@@ -8,6 +8,9 @@ interface CheckboxFieldProps {
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
   mode?: "edit" | "preview";
+  onValidation?: (isValid: boolean, errors: string[]) => void;
+  onValueChange?: (value: any) => void;
+  initialValue?: boolean;
 }
 
 export default function CheckboxField({
@@ -15,6 +18,9 @@ export default function CheckboxField({
   onEdit,
   onDelete,
   mode = "edit",
+  onValidation,
+  onValueChange,
+  initialValue,
 }: CheckboxFieldProps) {
   const [checked, setChecked] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -25,14 +31,12 @@ export default function CheckboxField({
   };
 
   const defaultChecked = getOptionValue("defaultChecked", false);
-  const checkboxText = getOptionValue("checkboxText", "I agree");
-  const description = getOptionValue("description", "");
-  const linkText = getOptionValue("linkText", "");
-  const linkUrl = getOptionValue("linkUrl", "");
 
   useEffect(() => {
-    setChecked(defaultChecked);
-  }, [defaultChecked]);
+    const initialState =
+      initialValue !== undefined ? initialValue : defaultChecked;
+    setChecked(initialState);
+  }, [defaultChecked, initialValue]);
 
   const validateCheckbox = (isChecked: boolean) => {
     const validationErrors: string[] = [];
@@ -43,15 +47,25 @@ export default function CheckboxField({
   };
 
   useEffect(() => {
-    if (touched) {
-      setErrors(validateCheckbox(checked));
+    const validationErrors = validateCheckbox(checked);
+    setErrors(validationErrors);
+
+    // Call validation callback if in preview mode
+    if (mode === "preview" && onValidation) {
+      const isValid = validationErrors.length === 0;
+      onValidation(isValid, validationErrors);
     }
-  }, [checked, field.required, touched]);
+  }, [checked, field.required, mode, onValidation]);
 
   const handleChange = (isChecked: boolean) => {
     setChecked(isChecked);
     if (!touched) {
       setTouched(true);
+    }
+
+    // Call value change callback if in preview mode
+    if (mode === "preview" && onValueChange) {
+      onValueChange(isChecked);
     }
   };
 
@@ -83,17 +97,17 @@ export default function CheckboxField({
           className="mt-0.5"
         />
         <div className="text-gray-600 dark:text-gray-400">
-          {checkboxText}
-          {linkText && linkUrl && (
+          {getOptionValue("checkboxText", "I agree")}
+          {getOptionValue("linkText", "") && getOptionValue("linkUrl", "") && (
             <>
               {" "}
               <a
-                href={linkUrl}
+                href={getOptionValue("linkUrl", "")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
               >
-                {linkText}
+                {getOptionValue("linkText", "")}
               </a>
             </>
           )}
@@ -101,9 +115,9 @@ export default function CheckboxField({
       </div>
 
       {/* Description */}
-      {description && (
+      {getOptionValue("description", "") && (
         <div className="text-xs text-gray-500 dark:text-gray-400 ml-6">
-          {description}
+          {getOptionValue("description", "")}
         </div>
       )}
 
