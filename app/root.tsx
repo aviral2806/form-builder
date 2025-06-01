@@ -5,10 +5,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from "@remix-run/react";
 import { ConfigProvider, theme } from "antd";
 import { useEffect, useState } from "react";
+import { Toaster } from "react-hot-toast";
 import Navbar from "./components/ui/Navbar";
+import { json } from "@remix-run/node";
 
 import "./tailwind.css";
 
@@ -58,6 +61,15 @@ function AntdConfigProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+export async function loader() {
+  return json({
+    ENV: {
+      SUPABASE_URL: process.env.SUPABASE_URL,
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+    },
+  });
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -68,7 +80,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <AntdConfigProvider>{children}</AntdConfigProvider>
+        <AntdConfigProvider>
+          {children}
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: "var(--toast-bg)",
+                color: "var(--toast-color)",
+                border: "1px solid var(--toast-border)",
+              },
+              success: {
+                iconTheme: {
+                  primary: "#10b981",
+                  secondary: "#ffffff",
+                },
+              },
+              error: {
+                iconTheme: {
+                  primary: "#ef4444",
+                  secondary: "#ffffff",
+                },
+              },
+            }}
+          />
+        </AntdConfigProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -77,10 +114,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const data = useLoaderData<typeof loader>();
   return (
     <>
       <Navbar />
       <Outlet />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.ENV = ${JSON.stringify(data.ENV)}`,
+        }}
+      />
     </>
   );
 }

@@ -1,8 +1,20 @@
 import { Link } from "@remix-run/react";
+import { useAuth } from "~/hooks/useAuth";
 
 export default function LandingPage() {
-  const user = null; // Replace with actual auth logic
-  const userForms = []; // Replace with real fetched forms
+  const { user, loading } = useAuth();
+  const userForms = []; // Replace with real fetched forms later
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -83,7 +95,7 @@ export default function LandingPage() {
             </div>
           ) : (
             <p className="text-gray-600 dark:text-gray-400">
-              You havent created any forms yet.
+              You haven't created any forms yet.
             </p>
           )}
         </section>

@@ -11,10 +11,12 @@ import { nanoid } from "nanoid";
 import FieldPalette, { FieldPreview } from "~/components/ui/FieldPalette";
 import FormCanvas from "~/components/ui/FormCanvas";
 import BottomBar from "~/components/ui/BottomBar";
+import ProtectedRoute from "~/components/ProtectedRoute";
 import { useFormBuilderStore } from "~/stores/formBuilder";
 import type { Field } from "~/stores/formBuilder";
+import toast from "react-hot-toast";
 
-export default function BuilderPage() {
+function BuilderContent() {
   const { addFieldToSection, reorderFields, sections } = useFormBuilderStore();
   const [activeDragItem, setActiveDragItem] = useState<Field | null>(null);
   const [dragType, setDragType] = useState<"palette" | "field" | null>(null);
@@ -73,6 +75,7 @@ export default function BuilderPage() {
   const handleDragEnd = useCallback(
     (event) => {
       const { active, over } = event;
+
       console.log("🔴 DRAG END:", {
         activeId: active?.id,
         overId: over?.id,
@@ -151,10 +154,26 @@ export default function BuilderPage() {
                   console.log("❌ Invalid reorder indices");
                 }
               } else {
-                console.log("❌ Fields not in same section");
+                // Trying to drop field from one section to another
+                console.log("❌ Fields not in same section - showing toast");
+                toast.error(
+                  "Fields can only be reordered within the same section",
+                  {
+                    duration: 3000,
+                    icon: "🚫",
+                  }
+                );
               }
             } else {
               console.log("❌ Over target is not a field");
+              console.log("❌ Fields not in same section - showing toast");
+              toast.error(
+                "Fields can only be reordered within the same section",
+                {
+                  duration: 3000,
+                  icon: "🚫",
+                }
+              );
             }
           } else {
             console.log("❌ Active field section not found");
@@ -222,5 +241,13 @@ export default function BuilderPage() {
         )}
       </div>
     </DndContext>
+  );
+}
+
+export default function BuilderPage() {
+  return (
+    <ProtectedRoute>
+      <BuilderContent />
+    </ProtectedRoute>
   );
 }

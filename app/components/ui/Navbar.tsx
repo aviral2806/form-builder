@@ -2,10 +2,11 @@ import { Link } from "@remix-run/react";
 import { Button } from "./button";
 import { useState, useEffect } from "react";
 import { Moon, Sun } from "lucide-react";
+import { useAuth } from "~/hooks/useAuth";
 
 export default function Navbar() {
-  const isLoggedIn = false; // Replace with auth logic later
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { user, signOut, loading } = useAuth();
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme") as
@@ -13,19 +14,28 @@ export default function Navbar() {
       | "dark"
       | null;
     if (storedTheme) {
-      setTheme(storedTheme);
+      setIsDark(storedTheme === "dark");
       document.documentElement.classList.toggle("dark", storedTheme === "dark");
     } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
+      setIsDark(true);
       document.documentElement.classList.add("dark");
     }
   }, []);
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
+    const newTheme = isDark ? "light" : "dark";
+    setIsDark(!isDark);
     document.documentElement.classList.toggle("dark", newTheme === "dark");
     localStorage.setItem("theme", newTheme);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(); // Don't add extra toast here - signOut function handles it
+    } catch (error) {
+      console.error("Sign out error:", error);
+      // Only show toast for unexpected errors
+    }
   };
 
   return (
@@ -52,41 +62,45 @@ export default function Navbar() {
             Create Form
           </Link>
 
+          {/* Auth Section */}
+          {loading ? (
+            <div className="w-8 h-8 animate-pulse bg-gray-300 rounded"></div>
+          ) : user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {user.email}
+              </span>
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                Sign Out
+              </Button>
+            </div>
+          ) : (
+            <Link
+              to="/auth"
+              className="text-sm bg-red-600 dark:bg-orange-500 text-white px-3 py-1.5 rounded hover:bg-red-700 dark:hover:bg-orange-600 transition-colors"
+            >
+              Sign In
+            </Link>
+          )}
+
+          {/* Theme Toggle */}
           <Button
             variant="ghost"
-            size="icon"
+            size="sm"
             onClick={toggleTheme}
-            className="rounded-full"
-            title={
-              theme === "light" ? "Switch to dark mode" : "Switch to light mode"
-            }
+            className="p-2"
           >
-            {theme === "light" ? (
-              <Moon className="h-5 w-5" />
+            {isDark ? (
+              <Sun className="h-4 w-4 text-orange-400" />
             ) : (
-              <Sun className="h-5 w-5" />
+              <Moon className="h-4 w-4 text-gray-700" />
             )}
-            <span className="sr-only">Toggle theme</span>
           </Button>
-
-          {isLoggedIn ? (
-            <>
-              <Link
-                to="/dashboard"
-                className="text-sm font-medium text-gray-700 hover:text-red-600 dark:text-gray-300 dark:hover:text-orange-400"
-              >
-                Dashboard
-              </Link>
-              <Button variant="outline">Logout</Button>
-            </>
-          ) : (
-            <Button
-              asChild
-              className="bg-red-600 hover:bg-red-700 dark:bg-orange-500 dark:hover:bg-orange-600"
-            >
-              <Link to="/login">Login</Link>
-            </Button>
-          )}
         </div>
       </div>
     </nav>
