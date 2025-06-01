@@ -8,10 +8,10 @@ interface DateFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
-  mode?: "edit" | "preview";
+  mode?: "edit" | "preview" | "submission";
   onValidation?: (isValid: boolean, errors: string[]) => void;
   onValueChange?: (value: any) => void;
-  initialValue?: string;
+  initialValue?: any;
 }
 
 export default function DateField({
@@ -107,36 +107,30 @@ export default function DateField({
     return validationErrors;
   };
 
+  // Check if we're in interactive mode (preview or submission)
+  const isInteractiveMode = mode === "preview" || mode === "submission";
+
   useEffect(() => {
     const validationErrors = validateDate(value);
     setErrors(validationErrors);
 
-    // Call validation callback if in preview mode
-    if (mode === "preview" && onValidation) {
+    // Call validation callback if in interactive mode
+    if (isInteractiveMode && onValidation) {
       const isValid = validationErrors.length === 0;
       onValidation(isValid, validationErrors);
     }
-  }, [
-    value,
-    field.required,
-    minDate,
-    maxDate,
-    disablePastDates,
-    disableFutureDates,
-    dateFormat,
-    mode,
-    onValidation,
-  ]);
+  }, [value, field.required, minDate, maxDate, isInteractiveMode]);
 
-  const handleChange = (date: Dayjs | null) => {
-    setValue(date);
+  const handleDateChange = (newValue: Dayjs | null) => {
+    setValue(newValue);
     if (!touched) {
       setTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
-      onValueChange(date ? date.format("YYYY-MM-DD") : null);
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
+      const dateString = newValue ? newValue.format("YYYY-MM-DD") : "";
+      onValueChange(dateString);
     }
   };
 
@@ -206,7 +200,7 @@ export default function DateField({
 
       <DatePicker
         value={value}
-        onChange={handleChange}
+        onChange={handleDateChange}
         format={dateFormat}
         className={getPickerClassName()}
         placeholder={field.placeholder || `Select date (${dateFormat})`}
@@ -257,7 +251,7 @@ export default function DateField({
     </div>
   );
 
-  if (mode === "preview") {
+  if (isInteractiveMode) {
     return fieldContent;
   }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Send } from "lucide-react";
 import { useFormBuilderStore } from "~/stores/formBuilder";
 import type { Field } from "~/stores/formBuilder";
 import TextField from "./fields/TextField";
@@ -10,11 +10,11 @@ import CheckboxField from "./fields/CheckboxField";
 import RadioField from "./fields/RadioField";
 import DropdownField from "./fields/DropdownField";
 import DateField from "./fields/DateField";
-import TimeField from "./fields/TimeField";
 
 interface FormPreviewProps {
   mode?: "preview" | "submission";
-  onSubmit?: (formData: Record<string, any>) => void;
+  onSubmit?: (formData: Record<string, any>) => Promise<any>;
+  isSubmitting?: boolean;
 }
 
 interface FieldValidation {
@@ -26,6 +26,7 @@ interface FieldValidation {
 export default function FormPreview({
   mode = "preview",
   onSubmit,
+  isSubmitting: externalIsSubmitting = false,
 }: FormPreviewProps) {
   const { formName, sections } = useFormBuilderStore();
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
@@ -36,12 +37,17 @@ export default function FormPreview({
   const [completedSections, setCompletedSections] = useState<Set<number>>(
     new Set()
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [internalIsSubmitting, setInternalIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   // Track field validation states
   const [fieldValidationStates, setFieldValidationStates] = useState<
     Record<string, { isValid: boolean; errors: string[] }>
   >({});
+
+  // Use external submitting state if provided, otherwise use internal
+  const isSubmitting = externalIsSubmitting || internalIsSubmitting;
 
   useEffect(() => {
     // Initialize validation states for all fields
@@ -70,12 +76,17 @@ export default function FormPreview({
     }));
   };
 
-  // Update form data
+  // Update form data - ENHANCED VERSION
   const updateFormData = (fieldId: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [fieldId]: value,
-    }));
+    console.log(`📝 Field ${fieldId} updated with value:`, value);
+    setFormData((prev) => {
+      const newData = {
+        ...prev,
+        [fieldId]: value,
+      };
+      console.log("📊 Current form data:", newData);
+      return newData;
+    });
   };
 
   // Check if current section is valid
@@ -106,7 +117,7 @@ export default function FormPreview({
   // Calculate progress percentage
   const getProgressPercentage = () => {
     if (sections.length === 0) return 0;
-    if (isSubmitting) return 100; // Complete on submit
+    if (isSubmitting || isSubmitted) return 100; // Complete on submit
 
     // Simple calculation: current section position as percentage
     return (currentSectionIndex / sections.length) * 100;
@@ -129,38 +140,103 @@ export default function FormPreview({
     }
   };
 
-  // Handle form submission
-  const handleSubmit = () => {
-    if (isCurrentSectionValid()) {
-      // Mark current section as completed
-      setCompletedSections((prev) => new Set([...prev, currentSectionIndex]));
+  // ENHANCED Handle form submission with error handling
+  const handleSubmit = async () => {
+    if (!isCurrentSectionValid()) {
+      return;
+    }
 
-      // Start submission animation
-      setIsSubmitting(true);
+    // Mark current section as completed
+    setCompletedSections((prev) => new Set([...prev, currentSectionIndex]));
 
-      // Simulate submission delay for animation
-      setTimeout(() => {
-        if (onSubmit) {
-          onSubmit(formData);
-        } else {
-          // Mock submission for preview mode
-          alert("Form submitted successfully! (This is a preview)");
+    // Clear any previous submission errors
+    setSubmissionError(null);
+
+    // Start submission animation
+    setInternalIsSubmitting(true);
+
+    try {
+      // Prepare final form data with field labels for better readability
+      const finalFormData: Record<string, any> = {};
+
+      sections.forEach((section) => {
+        section.fields.forEach((field) => {
+          const fieldValue = formData[field.id];
+          if (
+            fieldValue !== undefined &&
+            fieldValue !== null &&
+            fieldValue !== ""
+          ) {
+            finalFormData[field.label] = fieldValue;
+          }
+        });
+      });
+
+      console.log("🔥 Final form data being submitted:", finalFormData);
+      console.log("🔥 Raw form data by field ID:", formData);
+
+      if (onSubmit) {
+        // Real submission
+        await onSubmit(finalFormData);
+        setIsSubmitted(true);
+
+        if (mode === "preview") {
+          // For preview mode, show success and reset after delay
+          setTimeout(() => {
+            setInternalIsSubmitting(false);
+            setIsSubmitted(false);
+          }, 3000);
         }
-        setIsSubmitting(false);
-      }, 1500); // 1.5 second animation
+      } else {
+        // Mock submission for preview mode
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        console.log("📝 Form Data Preview:", finalFormData);
+        setIsSubmitted(true);
+
+        if (mode === "preview") {
+          setTimeout(() => {
+            setInternalIsSubmitting(false);
+            setIsSubmitted(false);
+          }, 3000);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Submission error:", error);
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while submitting the form";
+
+      setSubmissionError(errorMessage);
+      setInternalIsSubmitting(false);
+    } finally {
+      if (mode === "submission" && !submissionError) {
+        // Keep submitted state for successful public form submissions
+        setInternalIsSubmitting(false);
+      }
     }
   };
 
-  // Render field with validation callbacks
+  // Render field with validation callbacks - FIXED VERSION
   const renderField = (field: Field) => {
     const fieldProps = {
-      key: field.id,
       field,
-      mode: "preview" as const,
+      mode: mode as "preview" | "submission",
       onValidation: (isValid: boolean, errors: string[]) => {
+        console.log(`🔍 Validation for field "${field.label}" (${field.id}):`, {
+          isValid,
+          errors,
+          mode,
+        });
         updateFieldValidation(field.id, isValid, errors);
       },
       onValueChange: (value: any) => {
+        console.log(
+          `🔄 Field "${field.label}" (${field.id}) changed to:`,
+          value,
+          `(mode: ${mode})`
+        );
         updateFormData(field.id, value);
       },
       initialValue: formData[field.id],
@@ -168,23 +244,21 @@ export default function FormPreview({
 
     switch (field.type) {
       case "text":
-        return <TextField {...fieldProps} />;
+        return <TextField key={field.id} {...fieldProps} />;
       case "textarea":
-        return <TextareaField {...fieldProps} />;
+        return <TextareaField key={field.id} {...fieldProps} />;
       case "email":
-        return <EmailField {...fieldProps} />;
+        return <EmailField key={field.id} {...fieldProps} />;
       case "phone":
-        return <PhoneField {...fieldProps} />;
+        return <PhoneField key={field.id} {...fieldProps} />;
       case "checkbox":
-        return <CheckboxField {...fieldProps} />;
+        return <CheckboxField key={field.id} {...fieldProps} />;
       case "radio":
-        return <RadioField {...fieldProps} />;
+        return <RadioField key={field.id} {...fieldProps} />;
       case "dropdown":
-        return <DropdownField {...fieldProps} />;
+        return <DropdownField key={field.id} {...fieldProps} />;
       case "date":
-        return <DateField {...fieldProps} />;
-      case "time":
-        return <TimeField {...fieldProps} />;
+        return <DateField key={field.id} {...fieldProps} />;
       default:
         return (
           <div
@@ -200,6 +274,30 @@ export default function FormPreview({
   const currentSection = sections[currentSectionIndex];
   const isLastSection = currentSectionIndex === sections.length - 1;
   const canProceed = isCurrentSectionValid();
+
+  // Show submission success for public forms
+  if (mode === "submission" && isSubmitted) {
+    return (
+      <div className="bg-white dark:bg-zinc-900 h-full flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Thank You!
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Your form has been submitted successfully. We'll get back to you
+            soon!
+          </p>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            <p>Form: {formName}</p>
+            <p>Submitted: {new Date().toLocaleString()}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (sections.length === 0) {
     return (
@@ -218,9 +316,13 @@ export default function FormPreview({
     <div className="bg-white dark:bg-zinc-900 h-full flex flex-col">
       {/* Header with Form Name and Progress - Responsive */}
       <div className="border-b border-gray-200 dark:border-zinc-700 p-4 sm:p-6 pb-4 flex-shrink-0">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          {formName || "Untitled Form"}
-        </h1>
+        {mode === "submission" && (
+          <div className="mb-4 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Please fill out all required fields to submit the form
+            </p>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <div className="space-y-2">
@@ -229,13 +331,19 @@ export default function FormPreview({
             <span>
               {isSubmitting
                 ? "Submitting..."
+                : isSubmitted
+                ? "Completed!"
                 : `${Math.round(getProgressPercentage())}% Complete`}
             </span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
             <div
               className={`h-2 rounded-full transition-all duration-500 ease-out ${
-                isSubmitting ? "bg-green-500" : "bg-blue-500"
+                isSubmitting
+                  ? "bg-blue-500"
+                  : isSubmitted
+                  ? "bg-green-500"
+                  : "bg-blue-500"
               }`}
               style={{ width: `${getProgressPercentage()}%` }}
             />
@@ -320,15 +428,20 @@ export default function FormPreview({
                       : "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
                   }`}
                 >
-                  <span>
-                    {isSubmitting
-                      ? "Submitting..."
-                      : mode === "submission"
-                      ? "Submit Form"
-                      : "Submit (Preview)"}
-                  </span>
-                  {isSubmitting && (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>
+                        {mode === "submission"
+                          ? "Submit Form"
+                          : "Submit (Preview)"}
+                      </span>
+                    </>
                   )}
                 </button>
               ) : (
@@ -347,10 +460,34 @@ export default function FormPreview({
               )}
             </div>
 
+            {/* Submission Error Message */}
+            {submissionError && (
+              <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                <div className="flex items-start space-x-2">
+                  <div className="text-red-500 text-sm font-medium">❌</div>
+                  <div className="flex-1">
+                    <p className="text-sm text-red-800 dark:text-red-200 font-medium">
+                      Submission Failed
+                    </p>
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                      {submissionError}
+                    </p>
+                    <button
+                      onClick={() => setSubmissionError(null)}
+                      className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 mt-2 underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Validation Messages */}
             {!canProceed &&
               currentSection.fields.length > 0 &&
-              !isSubmitting && (
+              !isSubmitting &&
+              !submissionError && (
                 <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
                     Please fill in all required fields correctly to continue.
@@ -358,12 +495,17 @@ export default function FormPreview({
                 </div>
               )}
 
-            {/* Submission Success Message */}
+            {/* Submission Progress Message */}
             {isSubmitting && (
-              <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-                <p className="text-sm text-green-800 dark:text-green-200">
-                  Submitting your form...
-                </p>
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    {mode === "submission"
+                      ? "Submitting your response to the server..."
+                      : "Processing form preview..."}
+                  </p>
+                </div>
               </div>
             )}
           </div>

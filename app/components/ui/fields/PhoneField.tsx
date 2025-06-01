@@ -175,12 +175,15 @@ export default function PhoneField({
     }
   };
 
+  // Check if we're in interactive mode (preview or submission)
+  const isInteractiveMode = mode === "preview" || mode === "submission";
+
   useEffect(() => {
     const validationErrors = validatePhone(countryCode, phoneNumber);
     setErrors(validationErrors);
 
-    // Call validation callback if in preview mode
-    if (mode === "preview" && onValidation) {
+    // Call validation callback if in interactive mode
+    if (isInteractiveMode && onValidation) {
       const isValid = validationErrors.length === 0;
       onValidation(isValid, validationErrors);
     }
@@ -189,8 +192,7 @@ export default function PhoneField({
     phoneNumber,
     field.required,
     showCountryCode,
-    mode,
-    onValidation,
+    isInteractiveMode,
   ]);
 
   const handleCountryCodeChange = (newCountryCode: string) => {
@@ -199,13 +201,12 @@ export default function PhoneField({
       setTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
-      onValueChange({
-        countryCode: newCountryCode,
-        phoneNumber: phoneNumber,
-        fullNumber: `${newCountryCode} ${phoneNumber}`.trim(),
-      });
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
+      const fullNumber = showCountryCode
+        ? `${newCountryCode} ${phoneNumber}`.trim()
+        : phoneNumber;
+      onValueChange(fullNumber);
     }
   };
 
@@ -216,17 +217,12 @@ export default function PhoneField({
       setTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
-      const valueToSend = showCountryCode
-        ? {
-            countryCode: countryCode,
-            phoneNumber: formatted,
-            fullNumber: `${countryCode} ${formatted}`.trim(),
-          }
-        : formatted; // Just send the phone number string if no country code
-
-      onValueChange(valueToSend);
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
+      const fullNumber = showCountryCode
+        ? `${countryCode} ${formatted}`.trim()
+        : formatted;
+      onValueChange(fullNumber);
     }
   };
 
@@ -360,7 +356,7 @@ export default function PhoneField({
     </div>
   );
 
-  if (mode === "preview") {
+  if (isInteractiveMode) {
     return fieldContent;
   }
 

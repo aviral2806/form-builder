@@ -34,9 +34,11 @@ interface FormBuilderState {
   resetForm: () => void;
   loadTemplate: (template: { formName: string; sections: Section[]; templateId?: string }) => void;
   setCurrentTemplateId: (id: string | null) => void;
+  updateSection: (sectionId: string, updates: Partial<{ title: string; description: string }>) => void;
+  deleteSection: (sectionId: string) => void;
 }
 
-export const useFormBuilderStore = create<FormBuilderState>((set) => ({
+export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
   formName: "",
   sections: [
     {
@@ -159,4 +161,29 @@ export const useFormBuilderStore = create<FormBuilderState>((set) => ({
       editingField: null,
       currentTemplateId: null,
     })),
+
+  updateSection: (sectionId, updates) =>
+    set((state) => ({
+      sections: state.sections.map((section) =>
+        section.id === sectionId ? { ...section, ...updates } : section
+      ),
+    })),
+
+  deleteSection: (sectionId: string) => {
+    console.log("🗑️ Deleting section:", sectionId);
+    set((state) => ({
+      sections: state.sections.filter((section) => section.id !== sectionId),
+    }));
+  },
 }));
+
+export type FieldType = 
+  | "text" 
+  | "textarea" 
+  | "email" 
+  | "phone" 
+  | "checkbox" 
+  | "radio" 
+  | "dropdown" 
+  | "date";
+  // Removed "time"

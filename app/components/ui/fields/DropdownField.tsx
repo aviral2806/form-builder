@@ -9,10 +9,10 @@ interface DropdownFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
-  mode?: "edit" | "preview";
+  mode?: "edit" | "preview" | "submission";
   onValidation?: (isValid: boolean, errors: string[]) => void;
   onValueChange?: (value: any) => void;
-  initialValue?: string | string[];
+  initialValue?: any;
 }
 
 export default function DropdownField({
@@ -72,16 +72,19 @@ export default function DropdownField({
     return validationErrors;
   };
 
+  // Check if we're in interactive mode (preview or submission)
+  const isInteractiveMode = mode === "preview" || mode === "submission";
+
   useEffect(() => {
     const validationErrors = validateDropdown(value);
     setErrors(validationErrors);
 
-    // Call validation callback if in preview mode
-    if (mode === "preview" && onValidation) {
+    // Call validation callback if in interactive mode
+    if (isInteractiveMode && onValidation) {
       const isValid = validationErrors.length === 0;
       onValidation(isValid, validationErrors);
     }
-  }, [value, field.required, mode, onValidation]);
+  }, [value, field.required, isInteractiveMode]);
 
   const handleChange = (selectedValue: string | string[]) => {
     setValue(selectedValue);
@@ -89,8 +92,8 @@ export default function DropdownField({
       setTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
       onValueChange(selectedValue);
     }
   };
@@ -101,8 +104,8 @@ export default function DropdownField({
       setTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
       onValueChange(allowMultiple ? [] : "");
     }
   };
@@ -192,7 +195,7 @@ export default function DropdownField({
     </div>
   );
 
-  if (mode === "preview") {
+  if (isInteractiveMode) {
     return fieldContent;
   }
 

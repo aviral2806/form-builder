@@ -6,6 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useLocation,
 } from "@remix-run/react";
 import { ConfigProvider, theme } from "antd";
 import { useEffect, useState } from "react";
@@ -115,9 +116,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const data = useLoaderData<typeof loader>();
+  const location = useLocation();
+
+  // Check if current route is a public form route
+  const isPublicFormRoute = location.pathname.startsWith("/forms/");
+
   return (
     <>
-      <Navbar />
+      {/* Conditionally render Navbar - hide it for public form routes */}
+      {!isPublicFormRoute && <Navbar />}
       <Outlet />
       <script
         dangerouslySetInnerHTML={{

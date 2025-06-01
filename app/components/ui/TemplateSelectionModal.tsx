@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, FileText, ArrowRight } from "lucide-react";
 import Modal from "./Modal";
 import TemplateCard from "./TemplateCard";
-import { mockTemplates } from "~/data/mockTemplates";
+import { FormTemplateService } from "~/services/templateService";
 import type { Template } from "~/types/template";
+import type { FormTemplate } from "~/services/templateService";
+import toast from "react-hot-toast";
 
 interface TemplateSelectionModalProps {
   isOpen: boolean;
@@ -21,6 +23,50 @@ export default function TemplateSelectionModal({
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
     null
   );
+  const [defaultTemplates, setDefaultTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch default templates from backend
+  useEffect(() => {
+    const fetchDefaultTemplates = async () => {
+      if (!isOpen) return;
+
+      try {
+        setLoading(true);
+        console.log("📚 Fetching default templates from backend...");
+
+        const templates = await FormTemplateService.getDefaultTemplates();
+        console.log("✅ Fetched default templates:", templates.length);
+
+        // Convert FormTemplate to Template format for the UI
+        const convertedTemplates: Template[] = templates.map(
+          (template: FormTemplate) => ({
+            id: template.id,
+            name: template.form_name,
+            description:
+              template.description || "Pre-built template to get you started",
+            tags: template.tags || [],
+            estimatedTime: "3-5 min", // Default estimation
+            isPopular: true, // Mark all default templates as popular
+            structure: {
+              formName: template.form_name,
+              sections: template.form_structure,
+            },
+          })
+        );
+
+        setDefaultTemplates(convertedTemplates);
+      } catch (error) {
+        console.error("❌ Error fetching default templates:", error);
+        toast.error("Failed to load templates");
+        setDefaultTemplates([]); // Fallback to empty array
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDefaultTemplates();
+  }, [isOpen]);
 
   const handleSelectTemplate = (template: Template) => {
     setSelectedTemplate(template);
@@ -28,12 +74,14 @@ export default function TemplateSelectionModal({
 
   const handleUseTemplate = () => {
     if (selectedTemplate) {
+      console.log("🎯 Using template:", selectedTemplate.name);
       onSelectTemplate(selectedTemplate);
       onClose();
     }
   };
 
   const handleStartFresh = () => {
+    console.log("📝 Starting fresh");
     onStartFresh();
     onClose();
   };
@@ -99,20 +147,42 @@ export default function TemplateSelectionModal({
         {/* Template Section */}
         <div className="space-y-4">
           <h3 className="font-medium text-gray-900 dark:text-gray-100">
-            Popular Templates
+            Available Templates
           </h3>
 
-          {/* Template grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockTemplates.map((template) => (
-              <TemplateCard
-                key={template.id}
-                template={template}
-                onSelect={handleSelectTemplate}
-                isSelected={selectedTemplate?.id === template.id}
-              />
-            ))}
-          </div>
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-8">
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Loading templates...
+              </p>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && defaultTemplates.length === 0 && (
+            <div className="text-center py-8">
+              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                No templates available at the moment
+              </p>
+            </div>
+          )}
+
+          {/* Template Grid */}
+          {!loading && defaultTemplates.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {defaultTemplates.map((template) => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  onSelect={handleSelectTemplate}
+                  isSelected={selectedTemplate?.id === template.id}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Action buttons */}
@@ -126,13 +196,9 @@ export default function TemplateSelectionModal({
           <button
             onClick={handleUseTemplate}
             disabled={!selectedTemplate}
-            className={`flex items-center justify-center gap-2 px-6 py-2 rounded-md transition-all ${
-              selectedTemplate
-                ? "bg-blue-600 hover:bg-blue-700 text-white"
-                : "bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-            }`}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
-            <span>Use Template</span>
+            Use Selected Template
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

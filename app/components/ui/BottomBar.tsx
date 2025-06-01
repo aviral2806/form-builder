@@ -45,6 +45,26 @@ export default function BottomBar({
       return;
     }
 
+    // NEW: Validate all sections have names
+    const sectionsWithoutNames = sections.filter(
+      (section) => !section.title || section.title.trim() === ""
+    );
+
+    if (sectionsWithoutNames.length > 0) {
+      console.log(
+        "❌ Validation failed: Sections without names",
+        sectionsWithoutNames
+      );
+      toast.error(
+        `Please provide names for all sections. ${sectionsWithoutNames.length} section(s) are missing names.`,
+        {
+          duration: 4000,
+          icon: "⚠️",
+        }
+      );
+      return;
+    }
+
     console.log("✅ Validation passed, opening modal");
     setIsSaveTemplateModalOpen(true);
   };
@@ -109,16 +129,14 @@ export default function BottomBar({
   return (
     <>
       <div
-        className={`fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-800 border-t border-gray-200 dark:border-zinc-700 shadow-lg transition-transform duration-300 z-40 ${
-          collapsed ? "translate-y-6" : "translate-y-0"
-        } ${isModalOpen ? "z-30" : "z-40"}`}
-        style={{ height: collapsed ? "50px" : "60px" }}
+        className={`fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-gray-700 shadow-lg transition-transform duration-300 ${
+          collapsed ? "translate-y-12" : "translate-y-0 min-h-[40px]"
+        }`}
+        style={{ height: collapsed ? "4rem" : "4rem" }}
       >
-        {/* Toggle Button */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-white dark:bg-zinc-800 border rounded-full p-1 shadow"
-          aria-label={collapsed ? "Expand bottom bar" : "Collapse bottom bar"}
+          className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full p-1 shadow-md hover:shadow-lg transition-shadow"
         >
           {collapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>

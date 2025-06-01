@@ -3,6 +3,16 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Checkbox, Radio } from "antd";
 import DraggableField from "./DraggableField";
 import { fieldGroups } from "~/helpers/fieldGroups";
+import {
+  Type,
+  AlignLeft,
+  Mail,
+  Phone,
+  ChevronDown,
+  Circle,
+  Square,
+  Calendar,
+} from "lucide-react";
 
 // Component for rendering small field preview
 
@@ -78,18 +88,22 @@ export function FieldPreview({ type }: { type: string }) {
           className="w-full border rounded px-2 py-1 text-sm bg-gray-50 dark:bg-zinc-800"
         />
       );
-    case "time":
-      return (
-        <input
-          type="time"
-          disabled
-          className="w-full border rounded px-2 py-1 text-sm bg-gray-50 dark:bg-zinc-800"
-        />
-      );
     default:
       return <div>Unknown field</div>;
   }
 }
+
+const fieldTypes = [
+  { type: "text", label: "Text Field", icon: Type },
+  { type: "textarea", label: "Text Area", icon: AlignLeft },
+  { type: "email", label: "Email Field", icon: Mail },
+  { type: "phone", label: "Phone Field", icon: Phone },
+  { type: "dropdown", label: "Dropdown", icon: ChevronDown },
+  { type: "radio", label: "Radio Buttons", icon: Circle },
+  { type: "checkbox", label: "Checkboxes", icon: Square },
+  { type: "date", label: "Date Picker", icon: Calendar },
+  // Removed time field
+];
 
 export default function FieldPalette() {
   const [collapsed, setCollapsed] = useState(false);

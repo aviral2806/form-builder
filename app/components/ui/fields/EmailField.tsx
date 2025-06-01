@@ -6,10 +6,10 @@ interface EmailFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
-  mode?: "edit" | "preview";
+  mode?: "edit" | "preview" | "submission";
   onValidation?: (isValid: boolean, errors: string[]) => void;
   onValueChange?: (value: any) => void;
-  initialValue?: { email: string; confirmEmail: string };
+  initialValue?: any;
 }
 
 export default function EmailField({
@@ -74,6 +74,9 @@ export default function EmailField({
     return validationErrors;
   };
 
+  // Check if we're in interactive mode (preview or submission)
+  const isInteractiveMode = mode === "preview" || mode === "submission";
+
   useEffect(() => {
     const emailErrors = validateEmail(value);
     const confirmEmailErrors = confirmEmail
@@ -83,8 +86,8 @@ export default function EmailField({
     setErrors(emailErrors);
     setConfirmErrors(confirmEmailErrors);
 
-    // Call validation callback if in preview mode
-    if (mode === "preview" && onValidation) {
+    // Call validation callback if in interactive mode
+    if (isInteractiveMode && onValidation) {
       const allErrors = [...emailErrors, ...confirmEmailErrors];
       const isValid = allErrors.length === 0;
       onValidation(isValid, allErrors);
@@ -95,17 +98,27 @@ export default function EmailField({
     field.required,
     allowedDomains,
     confirmEmail,
-    mode,
-    onValidation,
+    isInteractiveMode,
+    // Removed: mode, onValidation
   ]);
 
-  // Sync with initial value
+  // Sync with initial value - only when initialValue changes and is different
   useEffect(() => {
-    if (initialValue) {
-      setValue(initialValue.email || "");
-      setConfirmValue(initialValue.confirmEmail || "");
+    if (initialValue && typeof initialValue === "object") {
+      const newEmail = initialValue.email || "";
+      const newConfirmEmail = initialValue.confirmEmail || "";
+
+      // Only update if values are actually different
+      if (newEmail !== value) {
+        setValue(newEmail);
+      }
+      if (newConfirmEmail !== confirmValue) {
+        setConfirmValue(newConfirmEmail);
+      }
+    } else if (typeof initialValue === "string" && initialValue !== value) {
+      setValue(initialValue);
     }
-  }, [initialValue]);
+  }, [initialValue]); // Removed value and confirmValue dependencies
 
   const handleEmailChange = (newValue: string) => {
     setValue(newValue);
@@ -113,12 +126,16 @@ export default function EmailField({
       setTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
-      onValueChange({
-        email: newValue,
-        confirmEmail: confirmValue,
-      });
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
+      if (confirmEmail) {
+        onValueChange({
+          email: newValue,
+          confirmEmail: confirmValue,
+        });
+      } else {
+        onValueChange(newValue);
+      }
     }
   };
 
@@ -128,8 +145,8 @@ export default function EmailField({
       setConfirmTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
       onValueChange({
         email: value,
         confirmEmail: newValue,
@@ -264,7 +281,7 @@ export default function EmailField({
     </div>
   );
 
-  if (mode === "preview") {
+  if (isInteractiveMode) {
     return fieldContent;
   }
 

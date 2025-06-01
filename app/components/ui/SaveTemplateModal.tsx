@@ -48,7 +48,8 @@ export default function SaveTemplateModal({
           );
 
           if (template) {
-            setFormName(template.form_name);
+            // ALWAYS use form name from canvas, not from template data
+            setFormName(canvasFormName.trim() || template.form_name);
             setDescription(template.description || "");
             setTags(template.tags || []);
             setExpiryDate(
@@ -71,6 +72,13 @@ export default function SaveTemplateModal({
 
     loadTemplateData();
   }, [isOpen, isEditMode, templateId, canvasFormName]);
+
+  // Update form name when canvas form name changes (for edit mode)
+  useEffect(() => {
+    if (isOpen && isEditMode && canvasFormName && canvasFormName.trim()) {
+      setFormName(canvasFormName.trim());
+    }
+  }, [canvasFormName, isOpen, isEditMode]);
 
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && tagInput.trim()) {
@@ -210,11 +218,11 @@ export default function SaveTemplateModal({
             disabled={isSubmitting}
             maxLength={255}
           />
-          {!isEditMode && canvasFormName && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Auto-filled from your form title
-            </p>
-          )}
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {isEditMode
+              ? "Using current form title from canvas"
+              : "Auto-filled from your form title"}
+          </p>
         </div>
 
         {/* Description */}
@@ -284,7 +292,7 @@ export default function SaveTemplateModal({
           </p>
         </div>
 
-        {/* Expiry Date & Time using Antd DatePicker */}
+        {/* Expiry Date & Time */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Form Expiry Date & Time (Optional)
@@ -296,9 +304,6 @@ export default function SaveTemplateModal({
             placeholder="Select expiry date and time"
             className="w-full"
             disabled={isSubmitting}
-            disabledDate={(current) =>
-              current && current < dayjs().startOf("day")
-            }
             format="YYYY-MM-DD HH:mm"
           />
 

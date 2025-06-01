@@ -7,10 +7,10 @@ interface CheckboxFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
-  mode?: "edit" | "preview";
+  mode?: "edit" | "preview" | "submission";
   onValidation?: (isValid: boolean, errors: string[]) => void;
   onValueChange?: (value: any) => void;
-  initialValue?: boolean;
+  initialValue?: any;
 }
 
 export default function CheckboxField({
@@ -46,16 +46,19 @@ export default function CheckboxField({
     return validationErrors;
   };
 
+  // Check if we're in interactive mode (preview or submission)
+  const isInteractiveMode = mode === "preview" || mode === "submission";
+
   useEffect(() => {
     const validationErrors = validateCheckbox(checked);
     setErrors(validationErrors);
 
-    // Call validation callback if in preview mode
-    if (mode === "preview" && onValidation) {
+    // Call validation callback if in interactive mode
+    if (isInteractiveMode && onValidation) {
       const isValid = validationErrors.length === 0;
       onValidation(isValid, validationErrors);
     }
-  }, [checked, field.required, mode, onValidation]);
+  }, [checked, field.required, isInteractiveMode, onValidation]);
 
   const handleChange = (isChecked: boolean) => {
     setChecked(isChecked);
@@ -63,8 +66,8 @@ export default function CheckboxField({
       setTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
       onValueChange(isChecked);
     }
   };
@@ -143,7 +146,7 @@ export default function CheckboxField({
     </div>
   );
 
-  if (mode === "preview") {
+  if (isInteractiveMode) {
     return fieldContent;
   }
 

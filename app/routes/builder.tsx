@@ -84,11 +84,17 @@ function BuilderContent() {
 
   // Handle template selection
   const handleSelectTemplate = (template: any) => {
-    // For now, just start fresh
-    resetForm();
+    console.log("🎯 Selected template:", template);
+
+    // Load the template structure into the form builder
+    loadTemplate({
+      formName: template.structure.formName,
+      sections: template.structure.sections,
+    });
+
     setShowTemplateModal(false);
 
-    toast.success(`Template loading coming soon!`, {
+    toast.success(`Loaded "${template.name}" template`, {
       duration: 3000,
       icon: "✨",
     });

@@ -33,6 +33,9 @@ export default function TextAreaField({
   const maxLength = getOptionValue("maxLength", 0);
   const pattern = getOptionValue("pattern", "");
 
+  // Check if we're in interactive mode (preview or submission)
+  const isInteractiveMode = mode === "preview" || mode === "submission";
+
   // Helper function to convert simple pattern to regex and generate error message
   const processPattern = (simplePattern: string) => {
     if (!simplePattern.trim()) return null;
@@ -118,24 +121,16 @@ export default function TextAreaField({
     const validationErrors = validateInput(value);
     setErrors(validationErrors);
 
-    // Call validation callback if in preview mode
-    if (mode === "preview" && onValidation) {
+    // Call validation callback if in interactive mode
+    if (isInteractiveMode && onValidation) {
       const isValid = validationErrors.length === 0;
       onValidation(isValid, validationErrors);
     }
-  }, [
-    value,
-    field.required,
-    minLength,
-    maxLength,
-    pattern,
-    mode,
-    onValidation,
-  ]);
+  }, [value, field.required, minLength, maxLength, pattern, isInteractiveMode]);
 
   // Sync with initial value
   useEffect(() => {
-    if (initialValue !== undefined) {
+    if (initialValue !== undefined && initialValue !== value) {
       setValue(initialValue);
     }
   }, [initialValue]);
@@ -146,8 +141,8 @@ export default function TextAreaField({
       setTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
       onValueChange(newValue);
     }
   };
@@ -256,7 +251,7 @@ export default function TextAreaField({
     </div>
   );
 
-  if (mode === "preview") {
+  if (isInteractiveMode) {
     return fieldContent;
   }
 

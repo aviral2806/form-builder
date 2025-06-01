@@ -172,6 +172,25 @@ export class FormTemplateService {
     }
   }
 
+  // Get default templates (is_default = true)
+  static async getDefaultTemplates(): Promise<FormTemplate[]> {
+    console.log("📚 Fetching default templates from Supabase...");
+
+    const { data, error } = await supabase
+      .from("form_templates")
+      .select("*")
+      .eq("is_default", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("❌ Error fetching default templates:", error);
+      throw new Error(`Failed to fetch default templates: ${error.message}`);
+    }
+
+    console.log("✅ Fetched default templates:", data?.length || 0);
+    return data || [];
+  }
+
   // Check if template is expired
   static isTemplateExpired(template: FormTemplate): boolean {
     if (!template.expiry_date) return false;

@@ -23,7 +23,7 @@ export default function TemplateCard({
       className={`relative p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md group ${
         isSelected
           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400"
-          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600"
+          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-800 hover:border-gray-300 dark:hover:border-gray-600"
       }`}
     >
       {/* Popular badge */}

@@ -6,7 +6,7 @@ interface TextFieldProps {
   field: Field;
   onEdit?: (fieldId: string) => void;
   onDelete?: (fieldId: string) => void;
-  mode?: "edit" | "preview";
+  mode?: "edit" | "preview" | "submission";
   onValidation?: (isValid: boolean, errors: string[]) => void;
   onValueChange?: (value: any) => void;
   initialValue?: string;
@@ -32,6 +32,15 @@ export default function TextField({
   const minLength = getOptionValue("minLength", 0);
   const maxLength = getOptionValue("maxLength", 0);
   const pattern = getOptionValue("pattern", "");
+
+  // Check if we're in interactive mode (preview or submission)
+  const isInteractiveMode = mode === "preview" || mode === "submission";
+
+  console.log("TextField rendered with field:", field);
+  console.log("Initial value:", initialValue);
+  console.log("Current value:", value);
+  console.log("Mode:", mode);
+  console.log("Is interactive mode:", isInteractiveMode);
 
   // Helper function to convert simple pattern to regex and generate error message
   const processPattern = (simplePattern: string) => {
@@ -124,8 +133,8 @@ export default function TextField({
     const validationErrors = validateInput(value);
     setErrors(validationErrors);
 
-    // Call validation callback if in preview mode
-    if (mode === "preview" && onValidation) {
+    // Call validation callback if in interactive mode
+    if (isInteractiveMode && onValidation) {
       const isValid = validationErrors.length === 0;
       onValidation(isValid, validationErrors);
     }
@@ -135,16 +144,16 @@ export default function TextField({
     minLength,
     maxLength,
     pattern,
-    mode,
-    onValidation,
+    isInteractiveMode,
+    // Removed: mode, onValidation (these cause infinite loops)
   ]);
 
-  // Sync with initial value
+  // Sync with initial value - only on mount and when initialValue actually changes
   useEffect(() => {
-    if (initialValue !== undefined) {
+    if (initialValue !== undefined && initialValue !== value) {
       setValue(initialValue);
     }
-  }, [initialValue]);
+  }, [initialValue]); // Removed 'value' dependency to prevent loops
 
   const handleInputChange = (newValue: string) => {
     setValue(newValue);
@@ -152,8 +161,9 @@ export default function TextField({
       setTouched(true);
     }
 
-    // Call value change callback if in preview mode
-    if (mode === "preview" && onValueChange) {
+    // Call value change callback if in interactive mode
+    if (isInteractiveMode && onValueChange) {
+      console.log(`🔄 TextField ${field.label} value changed to:`, newValue);
       onValueChange(newValue);
     }
   };
@@ -265,8 +275,8 @@ export default function TextField({
     </div>
   );
 
-  // If in preview mode, return just the field content without BaseField wrapper
-  if (mode === "preview") {
+  // If in interactive mode, return just the field content without BaseField wrapper
+  if (isInteractiveMode) {
     return fieldContent;
   }
 

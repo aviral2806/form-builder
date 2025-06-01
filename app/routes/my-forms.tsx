@@ -6,11 +6,12 @@ import {
   Calendar,
   Tag,
   Clock,
-  MoreVertical,
   Edit,
   Trash2,
   Eye,
   ExternalLink,
+  Copy,
+  Share2,
 } from "lucide-react";
 import ProtectedRoute from "~/components/ProtectedRoute";
 import { useAuth } from "~/hooks/useAuth";
@@ -34,10 +35,13 @@ export default function MyFormsPage() {
       try {
         setLoading(true);
         const userTemplates = await FormTemplateService.getUserTemplates();
+        console.log("📊 Fetched forms:", userTemplates.length);
         setForms(userTemplates);
       } catch (error) {
-        console.error("Error fetching forms:", error);
-        toast.error("Failed to load your forms");
+        console.error("❌ Error fetching forms:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to load your forms"
+        );
       } finally {
         setLoading(false);
       }
@@ -45,6 +49,8 @@ export default function MyFormsPage() {
 
     if (user) {
       fetchForms();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
@@ -62,6 +68,17 @@ export default function MyFormsPage() {
     return matchesSearch && matchesTag;
   });
 
+  // Enhanced date formatting to include time
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -75,8 +92,31 @@ export default function MyFormsPage() {
     return new Date(expiryDate) < new Date();
   };
 
+  const isFormActive = (form: FormTemplate) => {
+    return !FormTemplateService.isTemplateExpired(form);
+  };
+
+  const copyPublicLink = (formId: string, formName: string) => {
+    const publicUrl = `${window.location.origin}/forms/${formId}`;
+    navigator.clipboard
+      .writeText(publicUrl)
+      .then(() => {
+        toast.success(`Public link for "${formName}" copied to clipboard!`, {
+          duration: 3000,
+          icon: "📋",
+        });
+      })
+      .catch(() => {
+        toast.error("Failed to copy link to clipboard");
+      });
+  };
+
+  const openPublicForm = (formId: string) => {
+    const publicUrl = `${window.location.origin}/forms/${formId}`;
+    window.open(publicUrl, "_blank");
+  };
+
   const handleDeleteForm = async (formId: string, formName: string) => {
-    // Use toast for confirmation instead of window.confirm
     toast(
       (t) => (
         <div className="flex flex-col gap-3">
@@ -102,16 +142,16 @@ export default function MyFormsPage() {
 
                 try {
                   setDeletingFormId(formId);
+                  console.log("🗑️ Starting delete for form:", formId);
 
-                  // Actually call the backend delete function
                   await FormTemplateService.deleteTemplate(formId);
 
-                  // Remove from local state only after successful backend deletion
                   setForms((prev) => prev.filter((form) => form.id !== formId));
 
                   toast.success(`"${formName}" deleted successfully`);
+                  console.log("✅ Form deleted successfully:", formId);
                 } catch (error) {
-                  console.error("Error deleting form:", error);
+                  console.error("❌ Error deleting form:", error);
                   toast.error(
                     error instanceof Error
                       ? error.message
@@ -129,7 +169,7 @@ export default function MyFormsPage() {
         </div>
       ),
       {
-        duration: Infinity, // Keep toast open until user action
+        duration: Infinity,
         position: "top-center",
       }
     );
@@ -138,7 +178,7 @@ export default function MyFormsPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="min-h-screen bg-white dark:bg-zinc-900 flex items-center justify-center">
           <div className="text-center">
             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">
@@ -152,7 +192,7 @@ export default function MyFormsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-white dark:bg-gray-900 pt-24 pb-8">
+      <div className="min-h-screen bg-white dark:bg-zinc-900 pt-24 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
@@ -175,24 +215,22 @@ export default function MyFormsPage() {
 
           {/* Search and Filters */}
           <div className="mb-6 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:space-x-4">
-            {/* Search */}
             <div className="flex-1">
               <input
                 type="text"
                 placeholder="Search forms..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100"
               />
             </div>
 
-            {/* Tag Filter */}
             {allTags.length > 0 && (
               <div>
                 <select
                   value={selectedTag}
                   onChange={(e) => setSelectedTag(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">All Tags</option>
                   {allTags.map((tag) => (
@@ -232,23 +270,31 @@ export default function MyFormsPage() {
               {filteredForms.map((form) => (
                 <div
                   key={form.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
+                  className="bg-white dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
                 >
-                  {/* Form Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        {form.form_name}
-                      </h3>
-                      {form.description && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                          {form.description}
-                        </p>
-                      )}
-                    </div>
-                    <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
+                  {/* Form Header - REMOVED 3 DOTS MENU */}
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                      {form.form_name}
+                    </h3>
+                    {form.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                        {form.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Form Status Badge */}
+                  <div className="mb-4">
+                    <span
+                      className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                        isFormActive(form)
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                      }`}
+                    >
+                      {isFormActive(form) ? "🟢 Active" : "🔴 Inactive"}
+                    </span>
                   </div>
 
                   {/* Form Stats */}
@@ -289,7 +335,7 @@ export default function MyFormsPage() {
                     </div>
                   )}
 
-                  {/* Status & Dates */}
+                  {/* Status & Dates - ENHANCED WITH TIME */}
                   <div className="space-y-2 mb-4">
                     {form.expiry_date && (
                       <div className="flex items-center text-xs">
@@ -302,7 +348,7 @@ export default function MyFormsPage() {
                           }
                         >
                           {isExpired(form.expiry_date) ? "Expired" : "Expires"}:{" "}
-                          {formatDate(form.expiry_date)}
+                          {formatDateTime(form.expiry_date)}
                         </span>
                       </div>
                     )}
@@ -318,6 +364,57 @@ export default function MyFormsPage() {
                     )}
                   </div>
 
+                  {/* Public Form Link Section */}
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-blue-800 dark:text-blue-200">
+                        Public Form Link
+                      </span>
+                      <Share2 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => copyPublicLink(form.id, form.form_name)}
+                        disabled={!isFormActive(form)}
+                        className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                          isFormActive(form)
+                            ? "bg-blue-600 text-white hover:bg-blue-700"
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
+                        }`}
+                        title={
+                          isFormActive(form)
+                            ? "Copy public link"
+                            : "Form is inactive"
+                        }
+                      >
+                        <Copy className="w-3 h-3" />
+                        Copy
+                      </button>
+                      <button
+                        onClick={() => openPublicForm(form.id)}
+                        disabled={!isFormActive(form)}
+                        className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                          isFormActive(form)
+                            ? "bg-green-600 text-white hover:bg-green-700"
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400"
+                        }`}
+                        title={
+                          isFormActive(form)
+                            ? "Open public form"
+                            : "Form is inactive"
+                        }
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Open
+                      </button>
+                    </div>
+                    {!isFormActive(form) && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                        Form is inactive and cannot receive submissions
+                      </p>
+                    )}
+                  </div>
+
                   {/* Actions */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex items-center space-x-3">
@@ -329,7 +426,7 @@ export default function MyFormsPage() {
                         Edit
                       </Link>
                       <Link
-                        to={`/forms/${form.id}/responses`}
+                        to={`/responses/${form.id}`}
                         className="inline-flex items-center text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
                       >
                         <Eye className="w-4 h-4 mr-1" />
