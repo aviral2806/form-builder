@@ -9,64 +9,44 @@ import {
   MoreVertical,
   Edit,
   Trash2,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
 import ProtectedRoute from "~/components/ProtectedRoute";
 import { useAuth } from "~/hooks/useAuth";
-
-// Placeholder for form data structure
-interface UserForm {
-  id: string;
-  form_name: string;
-  description?: string;
-  tags?: string[];
-  expiry_date?: string;
-  created_at: string;
-  updated_at: string;
-  response_count?: number; // For future use
-}
+import {
+  FormTemplateService,
+  type FormTemplate,
+} from "~/services/templateService";
+import toast from "react-hot-toast";
 
 export default function MyFormsPage() {
   const { user } = useAuth();
-  const [forms, setForms] = useState<UserForm[]>([]);
+  const [forms, setForms] = useState<FormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTag, setSelectedTag] = useState<string>("");
+  const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
 
-  // Mock data for now - replace with actual API call later
+  // Fetch user's templates from Supabase
   useEffect(() => {
     const fetchForms = async () => {
-      setLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        const mockForms: UserForm[] = [
-          {
-            id: "1",
-            form_name: "Customer Feedback Survey",
-            description: "Collect customer feedback and satisfaction ratings",
-            tags: ["survey", "feedback", "customer"],
-            created_at: "2024-01-15T10:30:00Z",
-            updated_at: "2024-01-20T14:45:00Z",
-            response_count: 45,
-          },
-          {
-            id: "2",
-            form_name: "Job Application Form",
-            description:
-              "Complete job application with personal and professional details",
-            tags: ["hr", "recruitment"],
-            expiry_date: "2024-12-31T23:59:59Z",
-            created_at: "2024-01-10T09:15:00Z",
-            updated_at: "2024-01-10T09:15:00Z",
-            response_count: 12,
-          },
-        ];
-        setForms(mockForms);
+      try {
+        setLoading(true);
+        const userTemplates = await FormTemplateService.getUserTemplates();
+        setForms(userTemplates);
+      } catch (error) {
+        console.error("Error fetching forms:", error);
+        toast.error("Failed to load your forms");
+      } finally {
         setLoading(false);
-      }, 1000);
+      }
     };
 
-    fetchForms();
-  }, []);
+    if (user) {
+      fetchForms();
+    }
+  }, [user]);
 
   // Get all unique tags from forms
   const allTags = Array.from(
@@ -95,6 +75,66 @@ export default function MyFormsPage() {
     return new Date(expiryDate) < new Date();
   };
 
+  const handleDeleteForm = async (formId: string, formName: string) => {
+    // Use toast for confirmation instead of window.confirm
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-red-500">🗑️</span>
+            <span className="font-medium">Delete "{formName}"?</span>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            This action cannot be undone.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+              }}
+              className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id);
+
+                try {
+                  setDeletingFormId(formId);
+
+                  // Actually call the backend delete function
+                  await FormTemplateService.deleteTemplate(formId);
+
+                  // Remove from local state only after successful backend deletion
+                  setForms((prev) => prev.filter((form) => form.id !== formId));
+
+                  toast.success(`"${formName}" deleted successfully`);
+                } catch (error) {
+                  console.error("Error deleting form:", error);
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Failed to delete form"
+                  );
+                } finally {
+                  setDeletingFormId(null);
+                }
+              }}
+              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity, // Keep toast open until user action
+        position: "top-center",
+      }
+    );
+  };
+
   if (loading) {
     return (
       <ProtectedRoute>
@@ -121,7 +161,7 @@ export default function MyFormsPage() {
                 My Forms
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Manage and view all your created forms
+                Manage and view all your created forms ({forms.length} total)
               </p>
             </div>
             <Link
@@ -147,20 +187,22 @@ export default function MyFormsPage() {
             </div>
 
             {/* Tag Filter */}
-            <div>
-              <select
-                value={selectedTag}
-                onChange={(e) => setSelectedTag(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              >
-                <option value="">All Tags</option>
-                {allTags.map((tag) => (
-                  <option key={tag} value={tag}>
-                    {tag}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {allTags.length > 0 && (
+              <div>
+                <select
+                  value={selectedTag}
+                  onChange={(e) => setSelectedTag(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">All Tags</option>
+                  {allTags.map((tag) => (
+                    <option key={tag} value={tag}>
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Forms List */}
@@ -209,6 +251,29 @@ export default function MyFormsPage() {
                     </button>
                   </div>
 
+                  {/* Form Stats */}
+                  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Sections:
+                      </span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {form.form_structure.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mt-1">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Fields:
+                      </span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {form.form_structure.reduce(
+                          (total, section) => total + section.fields.length,
+                          0
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Tags */}
                   {form.tags && form.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-4">
@@ -245,24 +310,42 @@ export default function MyFormsPage() {
                       <Clock className="w-3 h-3 mr-1" />
                       Created: {formatDate(form.created_at)}
                     </div>
-                    {form.response_count !== undefined && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {form.response_count} responses
+                    {form.updated_at !== form.created_at && (
+                      <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                        <Clock className="w-3 h-3 mr-1" />
+                        Updated: {formatDate(form.updated_at)}
                       </div>
                     )}
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <Link
-                      to={`/builder/${form.id}`}
-                      className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                    <div className="flex items-center space-x-3">
+                      <Link
+                        to={`/builder?edit=${form.id}`}
+                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edit
+                      </Link>
+                      <Link
+                        to={`/forms/${form.id}/responses`}
+                        className="inline-flex items-center text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Responses
+                      </Link>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteForm(form.id, form.form_name)}
+                      disabled={deletingFormId === form.id}
+                      className="inline-flex items-center text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
                     >
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
-                    </Link>
-                    <button className="inline-flex items-center text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
-                      <Trash2 className="w-4 h-4 mr-1" />
+                      {deletingFormId === form.id ? (
+                        <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin mr-1" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-1" />
+                      )}
                       Delete
                     </button>
                   </div>

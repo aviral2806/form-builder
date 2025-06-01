@@ -5,6 +5,7 @@ import dayjs, { Dayjs } from "dayjs";
 import Modal from "./Modal";
 import { Button } from "./button";
 import { useFormBuilderStore } from "~/stores/formBuilder";
+import { FormTemplateService } from "~/services/templateService";
 import toast from "react-hot-toast";
 
 interface SaveTemplateModalProps {
@@ -16,12 +17,16 @@ interface SaveTemplateModalProps {
     tags?: string[];
     expiry_date?: string;
   }) => Promise<void>;
+  isEditMode?: boolean;
+  templateId?: string;
 }
 
 export default function SaveTemplateModal({
   isOpen,
   onClose,
   onSave,
+  isEditMode = false,
+  templateId,
 }: SaveTemplateModalProps) {
   const { formName: canvasFormName } = useFormBuilderStore();
   const [formName, setFormName] = useState("");
@@ -30,13 +35,42 @@ export default function SaveTemplateModal({
   const [tags, setTags] = useState<string[]>([]);
   const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
 
-  // Auto-populate form name from canvas when modal opens
+  // Load existing template data when in edit mode
   useEffect(() => {
-    if (isOpen && canvasFormName && canvasFormName.trim()) {
-      setFormName(canvasFormName.trim());
-    }
-  }, [isOpen, canvasFormName]);
+    const loadTemplateData = async () => {
+      if (isOpen && isEditMode && templateId) {
+        try {
+          setIsLoadingTemplate(true);
+          const template = await FormTemplateService.getTemplateById(
+            templateId
+          );
+
+          if (template) {
+            setFormName(template.form_name);
+            setDescription(template.description || "");
+            setTags(template.tags || []);
+            setExpiryDate(
+              template.expiry_date ? dayjs(template.expiry_date) : null
+            );
+          }
+        } catch (error) {
+          console.error("Error loading template data:", error);
+          toast.error("Failed to load template data");
+        } finally {
+          setIsLoadingTemplate(false);
+        }
+      } else if (isOpen && !isEditMode) {
+        // Auto-populate form name from canvas when creating new template
+        if (canvasFormName && canvasFormName.trim()) {
+          setFormName(canvasFormName.trim());
+        }
+      }
+    };
+
+    loadTemplateData();
+  }, [isOpen, isEditMode, templateId, canvasFormName]);
 
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && tagInput.trim()) {
@@ -100,12 +134,14 @@ export default function SaveTemplateModal({
         expiry_date: expiryTimestamp,
       });
 
-      // Reset form
-      setFormName("");
-      setDescription("");
-      setTags([]);
-      setTagInput("");
-      setExpiryDate(null);
+      // Only reset form if not in edit mode
+      if (!isEditMode) {
+        setFormName("");
+        setDescription("");
+        setTags([]);
+        setTagInput("");
+        setExpiryDate(null);
+      }
       onClose();
     } catch (error) {
       console.error("Save template error:", error);
@@ -116,22 +152,45 @@ export default function SaveTemplateModal({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setFormName("");
-      setDescription("");
-      setTags([]);
-      setTagInput("");
-      setExpiryDate(null);
+      // Only reset if not in edit mode
+      if (!isEditMode) {
+        setFormName("");
+        setDescription("");
+        setTags([]);
+        setTagInput("");
+        setExpiryDate(null);
+      }
       onClose();
     }
   };
 
   const expiryStatus = getExpiryStatus();
 
+  if (isLoadingTemplate) {
+    return (
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title={isEditMode ? "Update Template" : "Save as Template"}
+        size="md"
+      >
+        <div className="flex items-center justify-center py-8">
+          <div className="text-center">
+            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Loading template data...
+            </p>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Save as Template"
+      title={isEditMode ? "Update Template" : "Save as Template"}
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,7 +210,7 @@ export default function SaveTemplateModal({
             disabled={isSubmitting}
             maxLength={255}
           />
-          {canvasFormName && (
+          {!isEditMode && canvasFormName && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Auto-filled from your form title
             </p>
@@ -282,13 +341,19 @@ export default function SaveTemplateModal({
           <Button
             type="submit"
             disabled={isSubmitting || !formName.trim()}
-            className="bg-blue-500 hover:bg-blue-600 text-white"
+            className={`${
+              isEditMode
+                ? "bg-orange-500 hover:bg-orange-600"
+                : "bg-blue-500 hover:bg-blue-600"
+            } text-white`}
           >
             {isSubmitting ? (
               <div className="flex items-center space-x-2">
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Saving...</span>
+                <span>{isEditMode ? "Updating..." : "Saving..."}</span>
               </div>
+            ) : isEditMode ? (
+              "Update Template"
             ) : (
               "Save Template"
             )}

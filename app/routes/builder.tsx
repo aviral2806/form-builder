@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
+import { useSearchParams } from "@remix-run/react";
 import {
   DndContext,
   DragOverlay,
@@ -13,11 +14,8 @@ import BottomBar from "~/components/ui/BottomBar";
 import ProtectedRoute from "~/components/ProtectedRoute";
 import TemplateSelectionModal from "~/components/ui/TemplateSelectionModal";
 import { useFormBuilderStore } from "~/stores/formBuilder";
-// Remove this problematic import
-// import { TemplateService } from "~/services/templateService";
+import { FormTemplateService } from "~/services/templateService";
 import type { Field } from "~/stores/formBuilder";
-// Remove this if it doesn't exist
-// import type { Template } from "~/types/template";
 import toast from "react-hot-toast";
 
 function BuilderContent() {
@@ -27,11 +25,53 @@ function BuilderContent() {
     sections,
     loadTemplate,
     resetForm,
+    currentTemplateId,
+    setCurrentTemplateId,
   } = useFormBuilderStore();
+
+  const [searchParams] = useSearchParams();
+  const editTemplateId = searchParams.get("edit");
 
   const [activeDragItem, setActiveDragItem] = useState<Field | null>(null);
   const [dragType, setDragType] = useState<"palette" | "field" | null>(null);
-  const [showTemplateModal, setShowTemplateModal] = useState(true);
+  const [showTemplateModal, setShowTemplateModal] = useState(!editTemplateId); // Don't show modal if editing
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(!!editTemplateId);
+
+  // Load template for editing
+  useEffect(() => {
+    const loadTemplateForEdit = async () => {
+      if (editTemplateId) {
+        try {
+          setIsLoadingTemplate(true);
+          const template = await FormTemplateService.getTemplateById(
+            editTemplateId
+          );
+
+          if (template) {
+            loadTemplate({
+              formName: template.form_name,
+              sections: template.form_structure,
+              templateId: template.id,
+            });
+            toast.success(`Loaded "${template.form_name}" for editing`);
+          } else {
+            toast.error("Template not found");
+            resetForm();
+            setShowTemplateModal(true);
+          }
+        } catch (error) {
+          console.error("Error loading template:", error);
+          toast.error("Failed to load template");
+          resetForm();
+          setShowTemplateModal(true);
+        } finally {
+          setIsLoadingTemplate(false);
+        }
+      }
+    };
+
+    loadTemplateForEdit();
+  }, [editTemplateId, loadTemplate, resetForm]);
 
   // Configure sensors for drag events
   const sensors = useSensors(
@@ -42,7 +82,7 @@ function BuilderContent() {
     })
   );
 
-  // Temporarily comment out or simplify these handlers until template functionality is ready
+  // Handle template selection
   const handleSelectTemplate = (template: any) => {
     // For now, just start fresh
     resetForm();
@@ -195,6 +235,20 @@ function BuilderContent() {
     );
   };
 
+  // Show loading screen while loading template
+  if (isLoadingTemplate) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading template...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <TemplateSelectionModal
@@ -214,7 +268,10 @@ function BuilderContent() {
             <FieldPalette />
             <FormCanvas />
           </div>
-          <BottomBar isModalOpen={showTemplateModal} />
+          <BottomBar
+            isModalOpen={showTemplateModal}
+            isEditMode={!!currentTemplateId}
+          />
           {activeDragItem && (
             <DragOverlay>
               <div className="flex items-center gap-3 border rounded p-2 cursor-grab hover:bg-gray-200 dark:hover:bg-zinc-700 opacity-55">

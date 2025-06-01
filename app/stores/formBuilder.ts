@@ -20,6 +20,7 @@ interface FormBuilderState {
   formName: string;
   sections: Section[];
   editingField: Field | null;
+  currentTemplateId: string | null; // Track if we're editing an existing template
 
   // Actions
   setFormName: (name: string) => void;
@@ -30,6 +31,9 @@ interface FormBuilderState {
   deleteField: (fieldId: string) => void;
   updateSectionTitle: (sectionId: string, title: string) => void;
   reorderFields: (sectionId: string, oldIndex: number, newIndex: number) => void;
+  resetForm: () => void;
+  loadTemplate: (template: { formName: string; sections: Section[]; templateId?: string }) => void;
+  setCurrentTemplateId: (id: string | null) => void;
 }
 
 export const useFormBuilderStore = create<FormBuilderState>((set) => ({
@@ -42,6 +46,7 @@ export const useFormBuilderStore = create<FormBuilderState>((set) => ({
     },
   ],
   editingField: null,
+  currentTemplateId: null,
 
   setFormName: (name) => set({ formName: name }),
 
@@ -126,5 +131,32 @@ export const useFormBuilderStore = create<FormBuilderState>((set) => ({
         }
         return section;
       }),
+    })),
+
+  // Load template data into the store
+  loadTemplate: (template) =>
+    set(() => ({
+      formName: template.formName,
+      sections: template.sections,
+      currentTemplateId: template.templateId || null,
+      editingField: null,
+    })),
+
+  // Set current template ID
+  setCurrentTemplateId: (id) => set({ currentTemplateId: id }),
+
+  // Reset form to initial state
+  resetForm: () =>
+    set(() => ({
+      formName: "",
+      sections: [
+        {
+          id: nanoid(),
+          title: "Section 1",
+          fields: [],
+        },
+      ],
+      editingField: null,
+      currentTemplateId: null,
     })),
 }));

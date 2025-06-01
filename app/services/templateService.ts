@@ -68,6 +68,110 @@ export class FormTemplateService {
     return data;
   }
 
+  // Get user's templates (forms they created)
+  static async getUserTemplates(): Promise<FormTemplate[]> {
+    const { data: user } = await supabase.auth.getUser();
+    
+    if (!user.user) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("form_templates")
+      .select("*")
+      .eq("created_by", user.user.id)
+      .eq("is_default", false)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching user templates:", error);
+      throw new Error(`Failed to fetch templates: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  // Get a single template by ID
+  static async getTemplateById(templateId: string): Promise<FormTemplate | null> {
+    const { data, error } = await supabase
+      .from("form_templates")
+      .select("*")
+      .eq("id", templateId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned
+        return null;
+      }
+      console.error("Error fetching template:", error);
+      throw new Error(`Failed to fetch template: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  // Update existing template
+  static async updateTemplate(
+    templateId: string,
+    templateData: CreateTemplateData,
+    formStructure: Section[]
+  ): Promise<FormTemplate> {
+    const { data: user } = await supabase.auth.getUser();
+    
+    if (!user.user) {
+      throw new Error("User must be authenticated to update templates");
+    }
+
+    const updateRecord = {
+      form_name: templateData.form_name,
+      description: templateData.description || null,
+      tags: templateData.tags || null,
+      form_structure: formStructure,
+      expiry_date: templateData.expiry_date || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("form_templates")
+      .update(updateRecord)
+      .eq("id", templateId)
+      .eq("created_by", user.user.id) // Ensure user can only update their own templates
+      .select()
+      .single();
+
+    if (error) {
+      console.error("❌ Error updating template:", error);
+      throw new Error(`Failed to update template: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  // Delete template
+  static async deleteTemplate(templateId: string): Promise<void> {
+    const { data: user } = await supabase.auth.getUser();
+    
+    if (!user.user) {
+      throw new Error("User must be authenticated to delete templates");
+    }
+
+    const { data, error } = await supabase
+      .from("form_templates")
+      .delete()
+      .eq("id", templateId)
+      .eq("created_by", user.user.id); // Ensure user can only delete their own templates
+
+    console.log("🗑️ Deleting template:", templateId);
+    if (data) {
+      console.log("✅ Template deleted successfully:", data);
+    }
+    if (error) {
+      console.error("❌ Error deleting template:", error);
+      throw new Error(`Failed to delete template: ${error.message}`);
+    }
+  }
+
   // Check if template is expired
   static isTemplateExpired(template: FormTemplate): boolean {
     if (!template.expiry_date) return false;

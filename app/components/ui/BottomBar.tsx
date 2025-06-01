@@ -8,14 +8,18 @@ import toast from "react-hot-toast";
 
 interface BottomBarProps {
   isModalOpen?: boolean;
+  isEditMode?: boolean;
 }
 
-export default function BottomBar({ isModalOpen = false }: BottomBarProps) {
+export default function BottomBar({
+  isModalOpen = false,
+  isEditMode = false,
+}: BottomBarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
 
-  const { sections, resetForm } = useFormBuilderStore();
+  const { sections, resetForm, currentTemplateId } = useFormBuilderStore();
 
   const handlePreviewClick = () => {
     setIsPreviewModalOpen(true);
@@ -54,21 +58,40 @@ export default function BottomBar({ isModalOpen = false }: BottomBarProps) {
     console.log("💾 handleSaveTemplate called with:", templateData);
 
     try {
-      const savedTemplate = await FormTemplateService.saveTemplate(
-        templateData,
-        sections
-      );
+      let savedTemplate;
 
-      toast.success(
-        `Template "${savedTemplate.form_name}" saved successfully!`,
-        {
-          duration: 4000,
-          icon: "✅",
-        }
-      );
-
-      // Reset form canvas after successful save
-      resetForm();
+      if (isEditMode && currentTemplateId) {
+        console.log("🔄 Updating existing template:", currentTemplateId);
+        // Update existing template
+        savedTemplate = await FormTemplateService.updateTemplate(
+          currentTemplateId,
+          templateData,
+          sections
+        );
+        toast.success(
+          `Template "${savedTemplate.form_name}" updated successfully!`,
+          {
+            duration: 4000,
+            icon: "✅",
+          }
+        );
+      } else {
+        console.log("➕ Creating new template");
+        // Create new template
+        savedTemplate = await FormTemplateService.saveTemplate(
+          templateData,
+          sections
+        );
+        toast.success(
+          `Template "${savedTemplate.form_name}" saved successfully!`,
+          {
+            duration: 4000,
+            icon: "✅",
+          }
+        );
+        // Reset form canvas after successful save (only for new templates)
+        resetForm();
+      }
     } catch (error) {
       console.error("❌ Error in handleSaveTemplate:", error);
       toast.error(
@@ -110,9 +133,13 @@ export default function BottomBar({ isModalOpen = false }: BottomBarProps) {
             </button>
             <button
               onClick={handleSaveTemplateClick}
-              className="bg-green-500 text-white px-4 py-1 rounded hover:bg-green-600 transition-colors"
+              className={`text-white px-4 py-1 rounded transition-colors ${
+                isEditMode
+                  ? "bg-orange-500 hover:bg-orange-600"
+                  : "bg-green-500 hover:bg-green-600"
+              }`}
             >
-              Save as Template
+              {isEditMode ? "Update Template" : "Save as Template"}
             </button>
           </div>
         )}
@@ -127,6 +154,8 @@ export default function BottomBar({ isModalOpen = false }: BottomBarProps) {
         isOpen={isSaveTemplateModalOpen}
         onClose={() => setIsSaveTemplateModalOpen(false)}
         onSave={handleSaveTemplate}
+        isEditMode={isEditMode}
+        templateId={currentTemplateId || undefined}
       />
     </>
   );
