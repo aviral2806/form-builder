@@ -15,7 +15,7 @@ export default function BottomBar({ isModalOpen = false }: BottomBarProps) {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
 
-  const { sections } = useFormBuilderStore();
+  const { sections, resetForm } = useFormBuilderStore();
 
   const handlePreviewClick = () => {
     setIsPreviewModalOpen(true);
@@ -66,6 +66,9 @@ export default function BottomBar({ isModalOpen = false }: BottomBarProps) {
           icon: "✅",
         }
       );
+
+      // Reset form canvas after successful save
+      resetForm();
     } catch (error) {
       console.error("❌ Error in handleSaveTemplate:", error);
       toast.error(
@@ -84,9 +87,9 @@ export default function BottomBar({ isModalOpen = false }: BottomBarProps) {
     <>
       <div
         className={`fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-800 border-t border-gray-200 dark:border-zinc-700 shadow-lg transition-transform duration-300 z-40 ${
-          collapsed ? "translate-y-10" : "translate-y-0"
+          collapsed ? "translate-y-6" : "translate-y-0"
         } ${isModalOpen ? "z-30" : "z-40"}`}
-        style={{ height: collapsed ? "40px" : "60px" }}
+        style={{ height: collapsed ? "50px" : "60px" }}
       >
         {/* Toggle Button */}
         <button

@@ -67,9 +67,12 @@ export default function Navbar() {
             <div className="w-8 h-8 animate-pulse bg-gray-300 rounded"></div>
           ) : user ? (
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {user.email}
-              </span>
+              <Link
+                to="/my-forms"
+                className="text-sm font-medium text-gray-700 hover:text-red-600 dark:text-gray-300 dark:hover:text-orange-400"
+              >
+                My Forms
+              </Link>
               <Button
                 onClick={handleSignOut}
                 variant="outline"

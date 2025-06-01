@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { DatePicker } from "antd";
+import dayjs, { Dayjs } from "dayjs";
 import Modal from "./Modal";
 import { Button } from "./button";
 import { useFormBuilderStore } from "~/stores/formBuilder";
@@ -26,7 +28,7 @@ export default function SaveTemplateModal({
   const [description, setDescription] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [expiryDate, setExpiryDate] = useState("");
+  const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Auto-populate form name from canvas when modal opens
@@ -60,7 +62,7 @@ export default function SaveTemplateModal({
       };
     }
 
-    const selectedDate = new Date(expiryDate);
+    const selectedDate = expiryDate.toDate();
     const now = new Date();
 
     if (selectedDate < now) {
@@ -88,10 +90,8 @@ export default function SaveTemplateModal({
 
     setIsSubmitting(true);
     try {
-      // Convert local datetime to ISO string with timezone for backend
-      const expiryTimestamp = expiryDate
-        ? new Date(expiryDate).toISOString()
-        : undefined;
+      // Convert dayjs to ISO string with timezone for backend
+      const expiryTimestamp = expiryDate ? expiryDate.toISOString() : undefined;
 
       await onSave({
         form_name: formName.trim(),
@@ -105,7 +105,7 @@ export default function SaveTemplateModal({
       setDescription("");
       setTags([]);
       setTagInput("");
-      setExpiryDate("");
+      setExpiryDate(null);
       onClose();
     } catch (error) {
       console.error("Save template error:", error);
@@ -120,7 +120,7 @@ export default function SaveTemplateModal({
       setDescription("");
       setTags([]);
       setTagInput("");
-      setExpiryDate("");
+      setExpiryDate(null);
       onClose();
     }
   };
@@ -225,19 +225,22 @@ export default function SaveTemplateModal({
           </p>
         </div>
 
-        {/* Expiry Date & Time */}
+        {/* Expiry Date & Time using Antd DatePicker */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Form Expiry Date & Time (Optional)
           </label>
-          <input
-            type="datetime-local"
+          <DatePicker
+            showTime
             value={expiryDate}
-            onChange={(e) => setExpiryDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
-                     focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            onChange={(date) => setExpiryDate(date)}
+            placeholder="Select expiry date and time"
+            className="w-full"
             disabled={isSubmitting}
+            disabledDate={(current) =>
+              current && current < dayjs().startOf("day")
+            }
+            format="YYYY-MM-DD HH:mm"
           />
 
           {/* Dynamic Status Indicator */}
